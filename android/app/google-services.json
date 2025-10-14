@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "818246553741",
+    "project_id": "saherkit-35596",
+    "storage_bucket": "saherkit-35596.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:818246553741:android:c67338f586f8bd009392c4",
+        "android_client_info": {
+          "package_name": "com.example.saher_kit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAf3NtAuM8-fWth6S2r_XPYKgIYFKGkTfM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
