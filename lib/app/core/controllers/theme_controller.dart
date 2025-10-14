@@ -6,7 +6,7 @@ class ThemeController extends GetxController {
   final box = GetStorage();
 
   final themeMode = ThemeMode.system.obs;
-  final colorSeed = const Color(0xFF2563EB).obs;
+  final colorSeed = const Color(0xFFF1F8E9).obs;
   final fontFamily = 'Tajawal'.obs;
   final baseFontSize = 14.0.obs;
 
@@ -16,15 +16,16 @@ class ThemeController extends GetxController {
   static const _kFontSizeKey = 'fontSize';
 
   final availableColors = const [
-    Color(0xFF0B5FFF), // deep blue
+    Color(0xFFF1F8E9), // light green (default)
     Color(0xFF0B6A4A), // dark green
+    Color(0xFF0B5FFF), // deep blue
     Color(0xFFB00020), // ruby
     Color(0xFF8A4FFF), // muted violet
     Color(0xFF0F172A), // slate
     Color(0xFF334155), // gray-blue
   ];
 
-  static const Color defaultColor = Color(0xFF2563EB);
+  static const Color defaultColor = Color(0xFFF1F8E9);
 
   @override
   void onInit() {

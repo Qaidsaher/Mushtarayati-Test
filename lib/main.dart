@@ -8,6 +8,7 @@ import 'app/bindings/app_binding.dart';
 // theme is provided by ThemeController
 import 'app/core/controllers/appearance_controller.dart';
 import 'app/core/controllers/theme_controller.dart';
+import 'app/core/utils/constants.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
     final themeCtrl = Get.find<ThemeController>();
 
     return Obx(() => GetMaterialApp(
-          title: 'SaherKit',
+      title: Constants.appName,
           initialBinding: AppBinding(),
           locale: const Locale('ar'),
           fallbackLocale: const Locale('ar'),
@@ -38,7 +39,7 @@ class MyApp extends StatelessWidget {
           darkTheme: themeCtrl.darkTheme,
           themeMode: themeCtrl.themeMode.value,
           getPages: AppPages.pages,
-          initialRoute: '/auth/login',
+          initialRoute: '/splash',
         ));
   }
 }

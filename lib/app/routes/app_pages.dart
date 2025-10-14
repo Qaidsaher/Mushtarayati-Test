@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../modules/auth/bindings/auth_binding.dart';
 import '../modules/auth/views/login_page.dart';
+import '../modules/splash/views/splash_page.dart';
 import '../modules/auth/views/register_page.dart';
 import '../modules/auth/views/forgot_page.dart';
 import '../modules/profile/views/profile_settings_page.dart';
@@ -19,7 +20,8 @@ part 'app_routes.dart';
 
 class AppPages {
   static final pages = [
-    GetPage(name: Routes.login, page: () => LoginPage(), binding: AuthBinding()),
+  GetPage(name: Routes.splash, page: () => const SplashPage()),
+  GetPage(name: Routes.login, page: () => LoginPage(), binding: AuthBinding()),
     GetPage(name: Routes.register, page: () => RegisterPage(), binding: AuthBinding()),
     GetPage(name: Routes.forgot, page: () => ForgotPage(), binding: AuthBinding()),
   GetPage(name: Routes.profile, page: () => const ProfileSettingsPage()),

@@ -5,9 +5,8 @@ import '../../../data/repositories/branch_repository.dart';
 import '../../../data/repositories/category_repository.dart';
 import '../../../data/models/branch_model.dart';
 import '../../../data/models/category_model.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:get/get.dart';
+// file operations and sharing moved to ExportService
+import '../../../core/services/export_service.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -79,7 +78,10 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _runCustom() async {
     // If custom range provided, query ReportService via raw SQL or extend service.
-    if (_customFrom == null || _customTo == null) return _loadData();
+    if (_customFrom == null || _customTo == null) {
+      await _loadData();
+      return;
+    }
     final db = await SqliteProvider.database;
     final start = _customFrom!.millisecondsSinceEpoch;
     final end = _customTo!.millisecondsSinceEpoch;
@@ -182,6 +184,10 @@ class _ReportsPageState extends State<ReportsPage> {
                 ElevatedButton.icon(onPressed: _exportCsv, icon: const Icon(Icons.download), label: const Text('تصدير المشتريات (CSV)')),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(onPressed: _exportSummaryCsv, icon: const Icon(Icons.insert_chart), label: const Text('تصدير الملخص (CSV)')),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(onPressed: _exportPdf, icon: const Icon(Icons.picture_as_pdf), label: const Text('تصدير PDF')),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(onPressed: _exportExcel, icon: const Icon(Icons.table_chart), label: const Text('تصدير Excel')),
               ],
             ),
           ),
@@ -193,25 +199,36 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _exportCsv() async {
     final db = await SqliteProvider.database;
     final rows = await db.rawQuery('SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC');
-    final csv = StringBuffer()..writeln('id,notes,qty,unit_price,total,branch_id,updated_at');
-    for (final r in rows) {
-      csv.writeln('${r['id']},"${(r['notes'] ?? '').toString().replaceAll('"', '""')}",${r['qty'] ?? 0},${r['unit_price'] ?? 0},${r['total'] ?? 0},${r['branch_id'] ?? ''},${r['updated_at'] ?? ''}');
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/saher_purchases_${DateTime.now().millisecondsSinceEpoch}.csv');
-    await file.writeAsString(csv.toString());
-    Get.snackbar('تصدير', 'تم حفظ الملف: ${file.path}');
+    final file = await ExportService.createCsvReport(rows: rows.cast<Map<String, dynamic>>(), filenamePrefix: 'purchases');
+    if (!mounted) return;
+    final conf = await ExportService.showConfirmDialog(context, 'تصدير CSV');
+    if (conf == null) return;
+    await ExportService.shareFile(file, subject: 'تقرير المشتريات (CSV)', text: 'ملف المشتريات');
   }
 
   Future<void> _exportSummaryCsv() async {
-    final csv = StringBuffer()..writeln('period,total');
-    for (final r in _monthly) {
-      csv.writeln('${r['day'] ?? ''},${r['total'] ?? 0}');
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/saher_summary_${DateTime.now().millisecondsSinceEpoch}.csv');
-    await file.writeAsString(csv.toString());
-    Get.snackbar('تصدير', 'تم حفظ الملف: ${file.path}');
+    final file = await ExportService.createCsvReport(rows: _monthly.cast<Map<String, dynamic>>(), filenamePrefix: 'summary');
+    if (!mounted) return;
+    final conf = await ExportService.showConfirmDialog(context, 'تصدير الملخص (CSV)');
+    if (conf == null) return;
+    await ExportService.shareFile(file, subject: 'ملخص المشتريات', text: 'ملخص شهري');
+  }
+
+  Future<void> _exportPdf() async {
+    final conf = await ExportService.showConfirmDialog(context, 'تصدير PDF');
+    if (conf == null) return;
+    final file = await ExportService.createPdfReport(monthly: _monthly, weekly: _weekly, recent: _recent, filters: {'branch': _selectedBranchId, 'category': _selectedCategoryId});
+    await ExportService.shareFile(file, subject: 'تقرير المشتريات (PDF)', text: 'تقرير المشتريات');
+  }
+
+  Future<void> _exportExcel() async {
+    final db = await SqliteProvider.database;
+    final rows = await db.rawQuery('SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC');
+    final file = await ExportService.createExcelReport(rows: rows.cast<Map<String, dynamic>>());
+    if (!mounted) return;
+    final conf = await ExportService.showConfirmDialog(context, 'تصدير Excel');
+    if (conf == null) return;
+    await ExportService.shareFile(file, subject: 'تقرير المشتريات (Excel)', text: 'ملف Excel للمشتريات');
   }
 
 }

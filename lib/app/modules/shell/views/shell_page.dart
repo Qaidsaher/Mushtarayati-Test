@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:saher_kit/app/modules/branches/views/branches_page.dart';
+import 'package:saher_kit/app/modules/profile/views/profile_settings_page.dart';
 import '../../reports/views/reports_page.dart';
 import '../../categories/views/categories_page.dart';
 import '../../../data/controllers/sync_controller.dart';
 import '../../menus/views/menus_page.dart';
-import '../../branches/views/branches_page.dart';
+// branches page removed from shell builders; keep the import removed to avoid unused import lint
+// profile settings page intentionally not imported here
 import 'package:get/get.dart';
 
 class ShellPage extends StatefulWidget {
@@ -22,7 +25,7 @@ class _ShellPageState extends State<ShellPage> {
     () => const CategoriesPage(),
     () => const MenusPage(),
     () => const BranchesPage(),
-  () => const ReportsPage(),
+      () => const ReportsPage(),
   ];
 
   static const List<String> _titles = [
@@ -30,7 +33,7 @@ class _ShellPageState extends State<ShellPage> {
     'التصنيفات',
     'المشتريات',
     'الفروع',
-    'الملف والإعدادات',
+    'التقارير',
   ];
 
   @override
@@ -42,21 +45,28 @@ class _ShellPageState extends State<ShellPage> {
           IconButton(
             tooltip: 'الملف/الإعدادات',
             icon: const Icon(Icons.settings),
-            onPressed: () => setState(() => _index = 4),
+            onPressed: () => setState(() => Get.to(ProfileSettingsPage())),
           ),
           Obx(() {
             final sync = Get.find<SyncController>();
             final status = sync.status.value;
             return IconButton(
-              icon: status == 'syncing' ? const Icon(Icons.sync, color: Colors.orange) : const Icon(Icons.sync),
+              icon:
+                  status == 'syncing'
+                      ? const Icon(Icons.sync, color: Colors.orange)
+                      : const Icon(Icons.sync),
               onPressed: () async {
                 Get.snackbar('Sync', 'بدء المزامنة...');
                 await sync.syncNow();
                 final last = sync.lastSyncAt.value;
-                if (last != null) Get.snackbar('Sync', 'تمت المزامنة: ${DateTime.fromMillisecondsSinceEpoch(last)}');
+                if (last != null)
+                  Get.snackbar(
+                    'Sync',
+                    'تمت المزامنة: ${DateTime.fromMillisecondsSinceEpoch(last)}',
+                  );
               },
             );
-          })
+          }),
         ],
       ),
       body: SafeArea(
@@ -75,9 +85,13 @@ class _ShellPageState extends State<ShellPage> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'الرئيسية'),
           NavigationDestination(icon: Icon(Icons.category), label: 'التصنيفات'),
-          NavigationDestination(icon: Icon(Icons.shopping_bag), label: 'مشترياتي'),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_bag),
+            label: 'المشتريات',
+          ),
           NavigationDestination(icon: Icon(Icons.store), label: 'الفروع'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'الملف/الإعدادات'),
+
+          NavigationDestination(icon: Icon(Icons.bar_chart), label: 'التقارير'),
         ],
       ),
     );
