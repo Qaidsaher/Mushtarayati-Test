@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// image/chart export helpers removed — keep file minimal and responsive
 import 'package:fl_chart/fl_chart.dart';
 import '../../../data/services/report_service.dart';
 import '../../../data/providers/local/sqlite_provider.dart';
@@ -7,7 +6,6 @@ import '../../../data/repositories/branch_repository.dart';
 import '../../../data/repositories/category_repository.dart';
 import '../../../data/models/branch_model.dart';
 import '../../../data/models/category_model.dart';
-// file operations and sharing moved to ExportService
 import '../../../core/services/export_service.dart';
 
 class ReportsPage extends StatefulWidget {
@@ -27,10 +25,9 @@ class _ReportsPageState extends State<ReportsPage> {
 
   String? _selectedBranchId;
   String? _selectedCategoryId;
-  String _period = 'month'; // day | week | month | custom
+  String _period = 'month';
   DateTime? _customFrom;
   DateTime? _customTo;
-  // loading and error state handled inline by RefreshIndicator and local widgets
 
   @override
   void initState() {
@@ -46,22 +43,29 @@ class _ReportsPageState extends State<ReportsPage> {
   late GlobalKey _pieChartKey;
 
   Future<void> _loadData() async {
-    // show pull-to-refresh indicator only; local widgets will rebuild when data arrives
     try {
       final now = DateTime.now();
       final month = now.month;
       final year = now.year;
-      // prepare filters
       final branchId = _selectedBranchId;
       final categoryId = _selectedCategoryId;
 
-      final monthly = await _svc.monthlyTotals(year: year, month: month, branchId: branchId, categoryId: categoryId);
-      final weekly = await _svc.weeklyTotals(weeks: 8, branchId: branchId, categoryId: categoryId);
+      final monthly = await _svc.monthlyTotals(
+        year: year,
+        month: month,
+        branchId: branchId,
+        categoryId: categoryId,
+      );
+      final weekly = await _svc.weeklyTotals(
+        weeks: 8,
+        branchId: branchId,
+        categoryId: categoryId,
+      );
 
       final db = await SqliteProvider.database;
-      // Recent items (filtered)
       final whereParts = ['items.deleted = 0'];
       final args = <Object?>[];
+
       if (branchId != null) {
         whereParts.add('menus.branch_id = ?');
         args.add(branchId);
@@ -70,345 +74,834 @@ class _ReportsPageState extends State<ReportsPage> {
         whereParts.add('items.category_id = ?');
         args.add(categoryId);
       }
-      final where = whereParts.join(' AND ');
-      final rows = await db.rawQuery('SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE $where ORDER BY items.updated_at DESC LIMIT 50', args);
 
-      // load branches/categories for filters
+      final where = whereParts.join(' AND ');
+      final rows = await db.rawQuery(
+        'SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE $where ORDER BY items.updated_at DESC LIMIT 50',
+        args,
+      );
+
       final branchRepo = BranchRepository();
       final catRepo = CategoryRepository();
       final branches = await branchRepo.getAll();
       final categories = await catRepo.getAll();
 
-      setState(() {
-        _monthly = monthly;
-        _weekly = weekly;
-        _recent = rows;
-        _branches = branches;
-        _categories = categories;
-      });
+      if (mounted) {
+        setState(() {
+          _monthly = monthly;
+          _weekly = weekly;
+          _recent = rows;
+          _branches = branches;
+          _categories = categories;
+        });
+      }
     } catch (e, st) {
       debugPrint('Reports load error: $e\n$st');
-      // keep UI simple: show debug print and leave any existing data visible
-    } finally {
-      if (mounted) setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في تحميل البيانات: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _runCustom() async {
-    // If custom range provided, query ReportService via raw SQL or extend service.
     if (_customFrom == null || _customTo == null) {
       await _loadData();
       return;
     }
-    final db = await SqliteProvider.database;
-    final start = _customFrom!.millisecondsSinceEpoch;
-    final end = _customTo!.millisecondsSinceEpoch;
-    final args = <Object?>[start, end];
-    var where = 'items.updated_at BETWEEN ? AND ? AND items.deleted = 0';
-    if (_selectedBranchId != null) {
-      where += ' AND menus.branch_id = ?';
-      args.add(_selectedBranchId);
-    }
-    if (_selectedCategoryId != null) {
-      where += ' AND items.category_id = ?';
-      args.add(_selectedCategoryId);
-    }
-    final rows = await db.rawQuery('SELECT date(items.updated_at / 1000, "unixepoch") as day, SUM(items.total) as total FROM items JOIN menus ON menus.id = items.menu_id WHERE $where GROUP BY day ORDER BY day ASC', args);
-    setState(() {
-      _monthly = rows;
-    });
-  }
 
-  Widget _buildCard(String title, Widget child) => Card(
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            child
-          ]),
-        ),
+    try {
+      final db = await SqliteProvider.database;
+      final start = _customFrom!.millisecondsSinceEpoch;
+      final end = _customTo!.millisecondsSinceEpoch;
+      final args = <Object?>[start, end];
+
+      var where = 'items.updated_at BETWEEN ? AND ? AND items.deleted = 0';
+      if (_selectedBranchId != null) {
+        where += ' AND menus.branch_id = ?';
+        args.add(_selectedBranchId);
+      }
+      if (_selectedCategoryId != null) {
+        where += ' AND items.category_id = ?';
+        args.add(_selectedCategoryId);
+      }
+
+      final rows = await db.rawQuery(
+        'SELECT date(items.updated_at / 1000, "unixepoch") as day, SUM(items.total) as total FROM items JOIN menus ON menus.id = items.menu_id WHERE $where GROUP BY day ORDER BY day ASC',
+        args,
       );
+
+      if (mounted) {
+        setState(() => _monthly = rows);
+      }
+    } catch (e) {
+      debugPrint('Custom query error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(120),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary], begin: Alignment.topLeft, end: Alignment.bottomRight),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 8, offset: const Offset(0, 3))],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
-              child: LayoutBuilder(builder: (context, headerConstraints) {
-                final width = headerConstraints.maxWidth;
-                final showLogo = width >= 520; // show logo on medium+ screens
-                return Row(children: [
-                  if (showLogo) ...[
-                    Image.asset('assets/images/logo.png', height: 48),
-                    const SizedBox(width: 12),
-                  ],
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Text('لوحة التقارير', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text('نظرة عامة على المشتريات والملخصات', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70))
-                    ])
-                  ),
-                  IconButton(onPressed: _loadData, icon: const Icon(Icons.refresh, color: Colors.white), tooltip: 'تحديث')
-                ]);
-              }),
-            ),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        body: RefreshIndicator(
+          onRefresh: _loadData,
+          child: CustomScrollView(
+            slivers: [
+              // Modern SliverAppBar with gradient
+              _buildModernHeader(context),
+
+              // Content
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // Filters section
+                    _buildFiltersSection(context),
+                    const SizedBox(height: 16),
+
+                    // Summary cards
+                    _buildSummaryCards(context),
+                    const SizedBox(height: 16),
+
+                    // Charts section
+                    _buildChartsSection(context),
+                    const SizedBox(height: 16),
+
+                    // Recent purchases
+                    _buildRecentPurchases(context),
+                    const SizedBox(height: 16),
+
+                    // Export section
+                    _buildExportSection(context),
+                    const SizedBox(height: 32),
+                  ]),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadData,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('نظرة عامة', style: Theme.of(context).textTheme.titleLarge)),
-            const SizedBox(height: 12),
+    );
+  }
 
-            // filters card (compact, modern)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    children: [
-                      // Branch & Category filter chips (multi-select)
-                      Wrap(spacing: 8, runSpacing: 6, children: [
-                        const Text('الفرع:'),
-                        ..._branches.map((b) => FilterChip(label: Text(b.name), selected: _selectedBranchId == b.id, onSelected: (s) => setState(() => _selectedBranchId = s ? b.id : null))),
-                        const SizedBox(width: 12),
-                        const Text('التصنيف:'),
-                        ..._categories.map((c) => FilterChip(label: Text(c.name), selected: _selectedCategoryId == c.id, onSelected: (s) => setState(() => _selectedCategoryId = s ? c.id : null))),
-                      ]),
-                      const SizedBox(height: 12),
-                      // Responsive chips + run button
-                      LayoutBuilder(builder: (ctx, c) {
-                        final narrow = c.maxWidth < 480;
-                        return Wrap(alignment: WrapAlignment.start, spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                          const Text('المدى: '),
-                          ChoiceChip(label: const Text('يومي'), selected: _period == 'day', onSelected: (s) => setState(() => _period = 'day')),
-                          ChoiceChip(label: const Text('أسبوعي'), selected: _period == 'week', onSelected: (s) => setState(() => _period = 'week')),
-                          ChoiceChip(label: const Text('شهري'), selected: _period == 'month', onSelected: (s) => setState(() => _period = 'month')),
-                          ChoiceChip(label: const Text('مخصص'), selected: _period == 'custom', onSelected: (s) => setState(() => _period = 'custom')),
-                          if (!narrow) const SizedBox(width: 12),
-                          ElevatedButton.icon(onPressed: () async { if (_period == 'custom') await _runCustom(); else await _loadData(); }, icon: const Icon(Icons.play_arrow), label: const Text('تشغيل'))
-                        ]);
-                      }),
-                    ],
-                  ),
+  Widget _buildModernHeader(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: 160,
+      pinned: true,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+        ),
+        child: FlexibleSpaceBar(
+          titlePadding: const EdgeInsets.only(right: 20, bottom: 16, left: 60),
+          title: const Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'لوحة التقارير',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-
-            // Summary stat cards (responsive)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: LayoutBuilder(builder: (context, constraints) {
-                if (constraints.maxWidth < 480) {
-                  // stack vertically on narrow screens
-                  return Column(children: [
-                    _StatCard(title: 'إجمالي هذا الشهر', value: _formatCurrency(_monthly.fold<num>(0, (p, e) => p + ((e['total'] ?? 0) as num))), color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(height: 8),
-                    _StatCard(title: 'آخر 8 أسابيع', value: _formatCurrency(_weekly.fold<num>(0, (p, e) => p + ((e['total'] ?? 0) as num))), color: Theme.of(context).colorScheme.secondary),
-                  ]);
-                }
-                return Row(children: [Expanded(child: _StatCard(title: 'إجمالي هذا الشهر', value: _formatCurrency(_monthly.fold<num>(0, (p, e) => p + ((e['total'] ?? 0) as num))), color: Theme.of(context).colorScheme.primary)), const SizedBox(width: 12), Expanded(child: _StatCard(title: 'آخر 8 أسابيع', value: _formatCurrency(_weekly.fold<num>(0, (p, e) => p + ((e['total'] ?? 0) as num))), color: Theme.of(context).colorScheme.secondary))]);
-              }),
-            ),
-            const SizedBox(height: 12),
-
-            // Charts area: responsive layout (stack on narrow screens)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: LayoutBuilder(builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 800;
-                return Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('مخطط المبيعات', style: Theme.of(context).textTheme.titleMedium),
-                                IconButton(onPressed: () {}, icon: const Icon(Icons.filter_list))
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(height: isNarrow ? 260 : 220, child: RepaintBoundary(key: _largeChartKey, child: _LargeBarChart(monthly: _monthly, weekly: _weekly))),
-                        const SizedBox(height: 12),
-                        if (isNarrow) ...[
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                  Text('اتجاهات الشهر', style: Theme.of(context).textTheme.titleMedium),
-                                  const SizedBox.shrink(),
-                                ]),
-                                const SizedBox(height: 8),
-                                SizedBox(height: 140, child: RepaintBoundary(key: _lineChartKey, child: _LineTrendChart(monthly: _monthly)))
-                              ]),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                  Text('توزيع التصنيفات', style: Theme.of(context).textTheme.titleMedium),
-                                  const SizedBox.shrink(),
-                                ]),
-                                const SizedBox(height: 8),
-                                SizedBox(height: 180, child: RepaintBoundary(key: _pieChartKey, child: _CategoryPieChart(categories: _categories, recent: _recent)))
-                              ]),
-                            ),
-                          ),
-                        ] else ...[
-                          Row(children: [
-                            Expanded(
-                              child: Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                      Text('اتجاهات الشهر', style: Theme.of(context).textTheme.titleMedium),
-                                      const SizedBox.shrink(),
-                                    ]),
-                                    const SizedBox(height: 8),
-                                    SizedBox(height: 140, child: RepaintBoundary(key: _lineChartKey, child: _LineTrendChart(monthly: _monthly)))
-                                  ]),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                      Text('توزيع التصنيفات', style: Theme.of(context).textTheme.titleMedium),
-                                      const SizedBox.shrink(),
-                                    ]),
-                                    const SizedBox(height: 8),
-                                    SizedBox(height: 140, child: RepaintBoundary(key: _pieChartKey, child: _CategoryPieChart(categories: _categories, recent: _recent)))
-                                  ]),
-                                ),
-                              ),
-                            ),
-                          ]),
-                        ],
+              SizedBox(height: 4),
+              Text(
+                'نظرة شاملة وتحليلات متقدمة',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+          background: Stack(
+            children: [
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.secondary,
                       ],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
                     ),
                   ),
-                );
-              }),
+                ),
+              ),
+              Positioned(
+                top: 40,
+                left: 20,
+                child: IconButton(
+                  onPressed: _loadData,
+                  icon: const Icon(
+                    Icons.refresh,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  tooltip: 'تحديث البيانات',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFiltersSection(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.filter_list,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'الفلاتر والتحكم',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
 
-            // Recent purchases (table-like list)
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: _buildCard('آخر المشتريات', _recent.isEmpty ? const Text('لا توجد مشتريات') : Column(children: _recent.map((r) { final qty = r['qty'] ?? 0; final up = r['unit_price'] ?? 0; final tot = r['total'] ?? (qty * up); return ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text(r['notes'] ?? 'عنصر', maxLines: 1, overflow: TextOverflow.ellipsis), trailing: Text('$tot ريال'), subtitle: Text('الكمية: $qty • الفرع: ${r['branch_id'] ?? '-'}')); }).toList()))),
-            const SizedBox(height: 24),
+            // Branch filters
+            if (_branches.isNotEmpty) ...[
+              Text(
+                'الفرع:',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    _branches
+                        .map(
+                          (b) => FilterChip(
+                            label: Text(b.name),
+                            selected: _selectedBranchId == b.id,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedBranchId = selected ? b.id : null;
+                                _loadData();
+                              });
+                            },
+                            selectedColor:
+                                Theme.of(context).colorScheme.primaryContainer,
+                          ),
+                        )
+                        .toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
 
-            // Table section
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('الجدول', style: Theme.of(context).textTheme.titleLarge)),
+            // Category filters
+            if (_categories.isNotEmpty) ...[
+              Text(
+                'التصنيف:',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children:
+                    _categories
+                        .map(
+                          (c) => FilterChip(
+                            label: Text(c.name),
+                            selected: _selectedCategoryId == c.id,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedCategoryId = selected ? c.id : null;
+                                _loadData();
+                              });
+                            },
+                            selectedColor:
+                                Theme.of(
+                                  context,
+                                ).colorScheme.secondaryContainer,
+                          ),
+                        )
+                        .toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Period selection
+            Text(
+              'الفترة الزمنية:',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: const [DataColumn(label: Text('ملاحظة')), DataColumn(label: Text('الكمية')), DataColumn(label: Text('سعر الوحدة')), DataColumn(label: Text('المجموع')), DataColumn(label: Text('الفرع'))],
-                  rows: _recent.map((r) => DataRow(cells: [DataCell(Text(r['notes'] ?? 'عنصر')), DataCell(Text('${r['qty'] ?? 0}')), DataCell(Text('${r['unit_price'] ?? 0}')), DataCell(Text('${r['total'] ?? ((r['qty'] ?? 0) * (r['unit_price'] ?? 0))}')), DataCell(Text('${r['branch_id'] ?? '-'}'))])).toList(),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('يومي'),
+                  selected: _period == 'day',
+                  onSelected: (s) => setState(() => _period = 'day'),
+                ),
+                ChoiceChip(
+                  label: const Text('أسبوعي'),
+                  selected: _period == 'week',
+                  onSelected: (s) => setState(() => _period = 'week'),
+                ),
+                ChoiceChip(
+                  label: const Text('شهري'),
+                  selected: _period == 'month',
+                  onSelected: (s) => setState(() => _period = 'month'),
+                ),
+                ChoiceChip(
+                  label: const Text('مخصص'),
+                  selected: _period == 'custom',
+                  onSelected: (s) => setState(() => _period = 'custom'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Apply button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  if (_period == 'custom') {
+                    await _runCustom();
+                  } else {
+                    await _loadData();
+                  }
+                },
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('تطبيق الفلاتر'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            const SizedBox(height: 24),
+  Widget _buildSummaryCards(BuildContext context) {
+    final monthlyTotal = _monthly.fold<num>(
+      0,
+      (sum, e) => sum + ((e['total'] ?? 0) as num),
+    );
+    final weeklyTotal = _weekly.fold<num>(
+      0,
+      (sum, e) => sum + ((e['total'] ?? 0) as num),
+    );
 
-            // Export section
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('تصدير البيانات', style: Theme.of(context).textTheme.titleLarge)),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                ElevatedButton.icon(onPressed: _exportCsv, icon: const Icon(Icons.download), label: const Text('تصدير المشتريات (CSV)')),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(onPressed: _exportSummaryCsv, icon: const Icon(Icons.insert_chart), label: const Text('تصدير الملخص (CSV)')),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(onPressed: _exportPdf, icon: const Icon(Icons.picture_as_pdf), label: const Text('تصدير PDF')),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(onPressed: _exportExcel, icon: const Icon(Icons.table_chart), label: const Text('تصدير Excel')),
-              ]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            children: [
+              _StatCard(
+                title: 'إجمالي الشهر الحالي',
+                value: _formatCurrency(monthlyTotal),
+                icon: Icons.calendar_month,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 12),
+              _StatCard(
+                title: 'إجمالي 8 أسابيع',
+                value: _formatCurrency(weeklyTotal),
+                icon: Icons.date_range,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+              const SizedBox(height: 12),
+              _StatCard(
+                title: 'عدد المشتريات',
+                value: '${_recent.length}',
+                icon: Icons.shopping_cart,
+                color: Colors.green,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                title: 'إجمالي الشهر الحالي',
+                value: _formatCurrency(monthlyTotal),
+                icon: Icons.calendar_month,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
-            const SizedBox(height: 48),
-          ]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                title: 'إجمالي 8 أسابيع',
+                value: _formatCurrency(weeklyTotal),
+                icon: Icons.date_range,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                title: 'عدد المشتريات',
+                value: '${_recent.length}',
+                icon: Icons.shopping_cart,
+                color: Colors.green,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildChartsSection(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.analytics,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'التحليلات والرسوم البيانية',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.fullscreen),
+                  tooltip: 'عرض كامل',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Main bar chart
+            Container(
+              height: 280,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                ),
+              ),
+              child: RepaintBoundary(
+                key: _largeChartKey,
+                child: _LargeBarChart(monthly: _monthly, weekly: _weekly),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Secondary charts
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 700) {
+                  return Column(
+                    children: [
+                      _buildLineChart(context),
+                      const SizedBox(height: 12),
+                      _buildPieChart(context),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: _buildLineChart(context)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildPieChart(context)),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLineChart(BuildContext context) {
+    return Container(
+      height: 180,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'اتجاهات المبيعات',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: RepaintBoundary(
+              key: _lineChartKey,
+              child: _LineTrendChart(monthly: _monthly),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPieChart(BuildContext context) {
+    return Container(
+      height: 180,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'توزيع التصنيفات',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: RepaintBoundary(
+              key: _pieChartKey,
+              child: _CategoryPieChart(
+                categories: _categories,
+                recent: _recent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentPurchases(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.receipt_long,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'آخر المشتريات',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_recent.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('لا توجد مشتريات حتى الآن'),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _recent.length > 10 ? 10 : _recent.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (context, index) {
+                  final item = _recent[index];
+                  final qty = item['qty'] ?? 0;
+                  final unitPrice = item['unit_price'] ?? 0;
+                  final total = item['total'] ?? (qty * unitPrice);
+                  final notes = item['notes'] ?? 'عنصر';
+                  final branchId = item['branch_id'] ?? '-';
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      child: const Icon(Icons.shopping_basket),
+                    ),
+                    title: Text(
+                      notes,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text('الكمية: $qty • الفرع: $branchId'),
+                    trailing: Text(
+                      _formatCurrency(total),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportSection(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.file_download,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'تصدير البيانات',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _exportCsv,
+                  icon: const Icon(Icons.table_chart),
+                  label: const Text('تصدير CSV'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _exportPdf,
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text('تصدير PDF'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _exportExcel,
+                  icon: const Icon(Icons.file_present),
+                  label: const Text('تصدير Excel'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
   Future<void> _exportCsv() async {
-    // ask for confirmation first, then run the export with progress
-    await _confirmThenExport(() async {
-      final db = await SqliteProvider.database;
-      final rows = await db.rawQuery('SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC');
-      return await ExportService.createCsvReport(rows: rows.cast<Map<String, dynamic>>(), filenamePrefix: 'purchases');
-    }, confirmTitle: 'تصدير CSV', subject: 'تقرير المشتريات (CSV)', progressLabel: 'جارٍ إعداد CSV...');
-  }
-
-  Future<void> _exportSummaryCsv() async {
-    await _confirmThenExport(() async => ExportService.createCsvReport(rows: _monthly.cast<Map<String, dynamic>>(), filenamePrefix: 'summary'), confirmTitle: 'تصدير الملخص (CSV)', subject: 'ملخص المشتريات', progressLabel: 'جارٍ إعداد الملخص...');
+    await _confirmThenExport(
+      () async {
+        final db = await SqliteProvider.database;
+        final rows = await db.rawQuery(
+          'SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC',
+        );
+        return await ExportService.createCsvReport(
+          rows: rows.cast<Map<String, dynamic>>(),
+          filenamePrefix: 'purchases',
+        );
+      },
+      confirmTitle: 'تصدير CSV',
+      subject: 'تقرير المشتريات (CSV)',
+      progressLabel: 'جارٍ إعداد ملف CSV...',
+    );
   }
 
   Future<void> _exportPdf() async {
-    await _confirmThenExport(() => ExportService.createPdfReport(monthly: _monthly, weekly: _weekly, recent: _recent, filters: {'branch': _selectedBranchId, 'category': _selectedCategoryId}), confirmTitle: 'تصدير PDF', subject: 'تقرير المشتريات (PDF)', progressLabel: 'جارٍ إعداد PDF...');
+    await _confirmThenExport(
+      () => ExportService.createPdfReport(
+        monthly: _monthly,
+        weekly: _weekly,
+        recent: _recent,
+        filters: {'branch': _selectedBranchId, 'category': _selectedCategoryId},
+      ),
+      confirmTitle: 'تصدير PDF',
+      subject: 'تقرير المشتريات (PDF)',
+      progressLabel: 'جارٍ إعداد ملف PDF...',
+    );
   }
 
   Future<void> _exportExcel() async {
-    await _confirmThenExport(() async {
-      final db = await SqliteProvider.database;
-      final rows = await db.rawQuery('SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC');
-      return await ExportService.createExcelReport(rows: rows.cast<Map<String, dynamic>>() );
-    }, confirmTitle: 'تصدير Excel', subject: 'تقرير المشتريات (Excel)', progressLabel: 'جارٍ إنشاء ملف Excel...');
+    await _confirmThenExport(
+      () async {
+        final db = await SqliteProvider.database;
+        final rows = await db.rawQuery(
+          'SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC',
+        );
+        return await ExportService.createExcelReport(
+          rows: rows.cast<Map<String, dynamic>>(),
+        );
+      },
+      confirmTitle: 'تصدير Excel',
+      subject: 'تقرير المشتريات (Excel)',
+      progressLabel: 'جارٍ إنشاء ملف Excel...',
+    );
   }
 
-  // Unified helper: ask confirmation, run a long-running export with progress, then share the result.
-  Future<void> _confirmThenExport(Future<dynamic> Function() createFile, {required String confirmTitle, required String subject, String? text, String? progressLabel}) async {
-    final conf = await ExportService.showConfirmDialog(context, confirmTitle);
-    if (conf == null) return;
+  Future<void> _confirmThenExport(
+    Future<dynamic> Function() createFile, {
+    required String confirmTitle,
+    required String subject,
+    String? text,
+    String? progressLabel,
+  }) async {
     try {
-      final file = await _withProgress(() => createFile(), label: progressLabel);
+      final conf = await ExportService.showConfirmDialog(context, confirmTitle);
+      if (conf == null) return;
+
+      final file = await _withProgress(
+        () => createFile(),
+        label: progressLabel,
+      );
+
       if (!mounted) return;
+
       await ExportService.shareFile(file, subject: subject, text: text ?? '');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم التصدير: $subject')));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم التصدير: $subject'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e, st) {
       debugPrint('Export error: $e\n$st');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل التصدير: ${e.toString()}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل التصدير: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
-  // Helper to show an indeterminate progress dialog while running an async task
   Future<T> _withProgress<T>(Future<T> Function() task, {String? label}) async {
-    // show dialog
     if (!mounted) return await task();
-  showDialog<void>(context: context, barrierDismissible: false, builder: (ctx) => WillPopScope(onWillPop: () async => false, child: AlertDialog(content: Row(children: [const CircularProgressIndicator(), const SizedBox(width: 16), Expanded(child: Text(label ?? 'جارٍ المعالجة...'))]))));
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (ctx) => WillPopScope(
+            onWillPop: () async => false,
+            child: AlertDialog(
+              content: Row(
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 16),
+                  Expanded(child: Text(label ?? 'جارٍ المعالجة...')),
+                ],
+              ),
+            ),
+          ),
+    );
+
     try {
       final res = await task();
       return res;
@@ -418,124 +911,283 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   String _formatCurrency(num value) {
-    // Simple formatter: show integer when possible, otherwise show two decimals
-    if (value == value.round()) return '${value.toInt()} ريال';
+    if (value == value.round()) {
+      return '${value.toInt()} ريال';
+    }
     return '${value.toStringAsFixed(2)} ريال';
   }
-
-  // Chart capture/export helpers removed per request.
-  // chart export widgets removed per user request
-
 }
-
-// compact chart removed; use _LargeBarChart for main visuals
 
 // Stat card widget
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
+  final IconData icon;
   final Color color;
-  const _StatCard({Key? key, required this.title, required this.value, required this.color}) : super(key: key);
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(children: [
-          Container(width: 8, height: 48, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8))),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: Theme.of(context).textTheme.bodyMedium), const SizedBox(height: 6), Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold))])),
-        ]),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// Large chart widget with Arabic tooltips
+// Charts
 class _LargeBarChart extends StatelessWidget {
   final List<Map<String, dynamic>> monthly;
   final List<Map<String, dynamic>> weekly;
-  const _LargeBarChart({Key? key, required this.monthly, required this.weekly}) : super(key: key);
+
+  const _LargeBarChart({required this.monthly, required this.weekly});
 
   @override
   Widget build(BuildContext context) {
     final data = monthly.map((e) => (e['total'] ?? 0) as num).toList();
-    if (data.isEmpty) return const Center(child: Text('لا توجد بيانات للمخطط'));
-    final maxVal = data.reduce((a, b) => a > b ? a : b).toDouble();
-    final groups = <BarChartGroupData>[];
-    for (var i = 0; i < data.length; i++) {
-      final val = data[i].toDouble();
-      groups.add(BarChartGroupData(x: i, barRods: [BarChartRodData(toY: val, width: 18, borderRadius: BorderRadius.circular(6), color: Theme.of(context).colorScheme.primary)]));
+
+    if (data.isEmpty) {
+      return const Center(child: Text('لا توجد بيانات للعرض'));
     }
 
-    return BarChart(BarChartData(
-      alignment: BarChartAlignment.spaceAround,
-      maxY: maxVal == 0 ? 1 : maxVal * 1.2,
-      barGroups: groups,
-      titlesData: FlTitlesData(show: true, leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)), bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false))),
-      gridData: FlGridData(show: true, drawVerticalLine: false),
-      borderData: FlBorderData(show: false),
-      barTouchData: BarTouchData(enabled: true, touchTooltipData: BarTouchTooltipData(tooltipBgColor: Colors.black87, getTooltipItem: (group, groupIndex, rod, rodIndex) {
-        return BarTooltipItem('الإجمالي: ${rod.toY} ريال', const TextStyle(color: Colors.white));
-      })),
-    ));
+    final maxVal = data.reduce((a, b) => a > b ? a : b).toDouble();
+    final groups = <BarChartGroupData>[];
+
+    for (var i = 0; i < data.length; i++) {
+      final val = data[i].toDouble();
+      groups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: val,
+              width: 20,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
+              color: Theme.of(context).colorScheme.primary,
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxVal == 0 ? 1 : maxVal * 1.2,
+        barGroups: groups,
+        titlesData: FlTitlesData(
+          show: true,
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+          ),
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxVal > 0 ? maxVal / 5 : 1,
+        ),
+        borderData: FlBorderData(show: false),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: Colors.black87,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                'المبلغ: ${rod.toY.toStringAsFixed(0)} ريال',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }
 
-// Line chart for monthly trend
 class _LineTrendChart extends StatelessWidget {
   final List<Map<String, dynamic>> monthly;
-  const _LineTrendChart({Key? key, required this.monthly}) : super(key: key);
+
+  const _LineTrendChart({required this.monthly});
 
   @override
   Widget build(BuildContext context) {
     final spots = <FlSpot>[];
+
     for (var i = 0; i < monthly.length; i++) {
       final val = (monthly[i]['total'] ?? 0) as num;
       spots.add(FlSpot(i.toDouble(), val.toDouble()));
     }
-    if (spots.isEmpty) return const Center(child: Text('لا توجد بيانات'));
+
+    if (spots.isEmpty) {
+      return const Center(child: Text('لا توجد بيانات'));
+    }
+
     final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
-    return LineChart(LineChartData(
-      minX: 0,
-      maxX: spots.length - 1.toDouble(),
-      minY: 0,
-      maxY: maxY * 1.2,
-      lineBarsData: [LineChartBarData(spots: spots, isCurved: true, color: Theme.of(context).colorScheme.primary, barWidth: 3, dotData: FlDotData(show: false))],
-      titlesData: FlTitlesData(show: false),
-      gridData: FlGridData(show: false),
-    ));
+
+    return LineChart(
+      LineChartData(
+        minX: 0,
+        maxX: (spots.length - 1).toDouble(),
+        minY: 0,
+        maxY: maxY * 1.2,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: Theme.of(context).colorScheme.primary,
+            barWidth: 3,
+            dotData: const FlDotData(show: true),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  Theme.of(context).colorScheme.primary.withOpacity(0.0),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ],
+        titlesData: const FlTitlesData(show: false),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+      ),
+    );
   }
 }
 
-// Pie chart for category distribution (uses recent items)
 class _CategoryPieChart extends StatelessWidget {
   final List<CategoryModel> categories;
   final List<Map<String, dynamic>> recent;
-  const _CategoryPieChart({Key? key, required this.categories, required this.recent}) : super(key: key);
+
+  const _CategoryPieChart({required this.categories, required this.recent});
 
   @override
   Widget build(BuildContext context) {
-    // aggregate totals by category id
     final Map<String, double> totals = {};
+
     for (var r in recent) {
       final cid = (r['category_id'] ?? 'غير محدد').toString();
       final tot = ((r['total'] ?? 0) as num).toDouble();
       totals[cid] = (totals[cid] ?? 0) + tot;
     }
-    if (totals.isEmpty) return const Center(child: Text('لا توجد بيانات'));
+
+    if (totals.isEmpty) {
+      return const Center(child: Text('لا توجد بيانات'));
+    }
 
     final sections = <PieChartSectionData>[];
-    final palette = [Colors.blue, Colors.orange, Colors.green, Colors.purple, Colors.red, Colors.teal];
+    final palette = [
+      Colors.blue,
+      Colors.orange,
+      Colors.green,
+      Colors.purple,
+      Colors.red,
+      Colors.teal,
+      Colors.amber,
+      Colors.cyan,
+    ];
+
     var i = 0;
     totals.forEach((cid, value) {
-      final label = categories.firstWhere((c) => c.id == cid, orElse: () => CategoryModel(id: cid, name: cid)).name;
-      sections.add(PieChartSectionData(color: palette[i % palette.length], value: value, title: '${label}\n${value.toStringAsFixed(0)}', radius: 36, titleStyle: const TextStyle(fontSize: 10, color: Colors.white)));
+      final label =
+          categories
+              .firstWhere(
+                (c) => c.id == cid,
+                orElse: () => CategoryModel(id: cid, name: cid),
+              )
+              .name;
+
+      sections.add(
+        PieChartSectionData(
+          color: palette[i % palette.length],
+          value: value,
+          title: '${label}\n${value.toStringAsFixed(0)}',
+          radius: 50,
+          titleStyle: const TextStyle(
+            fontSize: 11,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
       i++;
     });
 
-    return PieChart(PieChartData(sections: sections, centerSpaceRadius: 18, sectionsSpace: 2));
+    return PieChart(
+      PieChartData(sections: sections, centerSpaceRadius: 20, sectionsSpace: 3),
+    );
   }
 }
