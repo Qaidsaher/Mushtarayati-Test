@@ -23,18 +23,7 @@ class CategoriesPage extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
-        appBar: AppBar(
-          backgroundColor: theme.colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            IconButton(
-              tooltip: 'بحث',
-              icon: const Icon(Icons.search_rounded),
-              onPressed: () {},
-            ),
-          ],
-        ),
+       
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _showAddCategoryDialog(context, c),
           icon: const Icon(Icons.add_rounded),

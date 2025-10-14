@@ -7,11 +7,27 @@ import 'package:sqflite/sqflite.dart';
 class MenuRepository {
   final _uuid = Uuid();
 
+  /// جلب قائمة واحدة حسب المعرّف
+  Future<MenuModel?> getById(String id) async {
+    final db = await SqliteProvider.database;
+    final rows = await db.query(
+      'menus',
+      where: 'id = ? AND deleted = 0',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return MenuModel.fromMap(rows.first);
+  }
+
   Future<void> createOrUpdate(MenuModel menu) async {
     final db = await SqliteProvider.database;
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = menu.id.isEmpty ? _uuid.v4() : menu.id;
-    final obj = menu.toMap()..['id'] = id..['updated_at'] = now;
+    final obj =
+        menu.toMap()
+          ..['id'] = id
+          ..['updated_at'] = now;
     await db.insert('menus', obj, conflictAlgorithm: ConflictAlgorithm.replace);
     await SqliteProvider.addOp({
       'id': _uuid.v4(),
@@ -26,7 +42,12 @@ class MenuRepository {
   Future<void> delete(String id) async {
     final db = await SqliteProvider.database;
     final now = DateTime.now().millisecondsSinceEpoch;
-    await db.update('menus', {'deleted': 1, 'updated_at': now}, where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      'menus',
+      {'deleted': 1, 'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     await SqliteProvider.addOp({
       'id': _uuid.v4(),
       'entity_type': 'menus',

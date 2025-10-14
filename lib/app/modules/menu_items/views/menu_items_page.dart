@@ -191,21 +191,33 @@ class MenuItemsPage extends StatelessWidget {
         ),
         floatingActionButton: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // ✅ زر إضافة عنصر
             FloatingActionButton.extended(
               onPressed: () => _showEditItemDialog(context, c, null),
               icon: const Icon(Icons.add),
-              label: const Text('إضافة عنصر'),
+              label: Text(
+                'إضافة عنصر',
+                style: Theme.of(context).textTheme.titleMedium, // ← من الثيم
+              ),
             ),
             const SizedBox(height: 8),
-            FloatingActionButton(
+
+            // ✅ زر الإدخال الجماعي
+            FloatingActionButton.extended(
               heroTag: 'bulk',
               onPressed: () => Get.to(() => const MenuItemsBulkPage()),
-              tooltip: 'إدخال جماعي',
-              child: const Icon(Icons.playlist_add),
+              icon: const Icon(Icons.playlist_add),
+              label: Text(
+                'إدخال جماعي',
+                style:
+                    Theme.of(context).textTheme.titleMedium, // ← من الثيم أيضًا
+              ),
             ),
           ],
         ),
+
         body: Obx(() {
           if (c.isLoading.value)
             return const Center(child: CircularProgressIndicator());
