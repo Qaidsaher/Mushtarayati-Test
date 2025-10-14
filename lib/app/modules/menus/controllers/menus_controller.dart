@@ -85,5 +85,19 @@ class MenusController extends GetxController {
     await load();
   }
 
+  /// Return rows suitable for exporting a specific menu
+  Future<List<Map<String, dynamic>>> exportRowsForMenu(String menuId) async {
+    final items = await _itemRepo.listByMenu(menuId);
+    return items.map((it) => {
+          'id': it.id,
+          'notes': it.notes ?? '',
+          'qty': it.qty,
+          'unit_price': it.unitPrice,
+          'total': it.qty * it.unitPrice,
+          'categoryId': it.categoryId ?? '',
+          'updated_at': it.updatedAt ?? 0,
+        }).toList();
+  }
+
   String _dateToStr(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

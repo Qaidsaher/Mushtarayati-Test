@@ -19,6 +19,8 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
   @override
   void initState() {
     super.initState();
+    // start with a sensible default: if categories are available later, we'll prefill rows
+    // add a single empty row for quick entry; will be replaced if categories exist on build
     _addRow();
   }
 
@@ -27,7 +29,7 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
       for (var cat in cats) {
         final r = _BulkRow();
         r.catId = cat.id;
-        r.name.text = cat.name;
+        // keep category fixed for this row; notes removed by design
         r.price.text = '0';
         _rows.add(r);
       }
@@ -47,6 +49,14 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
     final c = Get.find<MenuItemsController>();
     final menuId = c.menuId;
   final categories = c.categories;
+
+    bool isRowValid(_BulkRow r) {
+      final q = double.tryParse(r.qty.text) ?? 0;
+      final p = double.tryParse(r.price.text) ?? 0;
+      return (r.catId != null) && q > 0 && p > 0;
+    }
+
+    int validCount() => _rows.where((r) => isRowValid(r)).length;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -115,7 +125,8 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
             const Divider(height: 1),
 
             const SizedBox(height: 8),
-            
+            // no automatic prefill - user controls adding rows (via 'إضافة المحدد' or 'إضافة الكل')
+
             Expanded(
               child: ListView.builder(
                 controller: _scroll,
@@ -123,37 +134,72 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
                 itemCount: _rows.length,
                 itemBuilder: (context, i) {
                   final r = _rows[i];
+                  final valid = isRowValid(r);
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: valid ? Colors.transparent : Theme.of(context).colorScheme.error.withOpacity(0.9))),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(children: [
-                            Expanded(child: TextField(controller: r.name, decoration: const InputDecoration(labelText: 'الاسم (اختياري)'))),
-                            IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeRow(i)),
-                          ]),
-                          const SizedBox(height: 8),
-                          Row(children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: r.catId,
-                                  items: categories
-                                      .map((cat) => DropdownMenuItem(
-                                            value: cat.id,
-                                            child: Row(children: [Icon(_iconFor(cat)), const SizedBox(width: 8), Text(cat.name)]),
-                                          ))
-                                      .toList(),
-                                  onChanged: (v) => setState(() => r.catId = v),
-                                  decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), labelText: 'الفئة'),
-                                ),
-                              ),
-                            const SizedBox(width: 8),
-                            SizedBox(width: 90, child: TextField(controller: r.qty, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'كم'))),
-                            const SizedBox(width: 8),
-                            SizedBox(width: 120, child: TextField(controller: r.price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سعر'))),
-                          ]),
+                                      LayoutBuilder(builder: (ctx, cons) {
+                                        final isWide = cons.maxWidth > 520;
+                                        final categoryWidget = r.catId != null
+                                            ? Chip(
+                                                label: Text(categories.firstWhere((c) => c.id == r.catId).name),
+                                                avatar: Icon(_iconFor(categories.firstWhere((c) => c.id == r.catId)), size: 18),
+                                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                              )
+                                            : DropdownButtonFormField<String>(
+                                                value: r.catId,
+                                                isExpanded: true,
+                                                items: categories
+                                                    .map((cat) => DropdownMenuItem(
+                                                          value: cat.id,
+                                                          child: Row(children: [Icon(_iconFor(cat)), const SizedBox(width: 8), Flexible(child: Text(cat.name, overflow: TextOverflow.ellipsis))]),
+                                                        ))
+                                                    .toList(),
+                                                onChanged: (v) => setState(() => r.catId = v),
+                                                decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), labelText: 'الفئة'),
+                                              );
+
+                                        final qtyField = TextField(
+                                          controller: r.qty,
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(hintText: '0', labelText: 'كمية', filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), errorText: (r.qty.text.isNotEmpty && (double.tryParse(r.qty.text) ?? 0) <= 0) ? 'أدخل كمية صالحة' : null),
+                                        );
+
+                                        final priceField = TextField(
+                                          controller: r.price,
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(hintText: '0', labelText: 'سعر', suffixText: 'ريال', filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), errorText: (r.price.text.isNotEmpty && (double.tryParse(r.price.text) ?? 0) <= 0) ? 'أدخل سعر صالح' : null),
+                                        );
+
+                                        if (isWide) {
+                                          return Row(
+                                            children: [
+                                              Expanded(flex: 4, child: Row(children: [Expanded(child: categoryWidget)])),
+                                              const SizedBox(width: 12),
+                                              Expanded(flex: 1, child: qtyField),
+                                              const SizedBox(width: 12),
+                                              Expanded(flex: 1, child: priceField),
+                                              const SizedBox(width: 8),
+                                              IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeRow(i)),
+                                            ],
+                                          );
+                                        }
+
+                                        // narrow layout: stack vertically but keep qty+price in one compact row
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            Row(children: [Expanded(child: categoryWidget), IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeRow(i))]),
+                                            const SizedBox(height: 8),
+                                            Row(children: [Expanded(child: qtyField), const SizedBox(width: 12), SizedBox(width: 130, child: priceField)]),
+                                          ],
+                                        );
+                                      }),
                         ],
                       ),
                     ),
@@ -167,22 +213,25 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
                 children: [
                   ElevatedButton.icon(onPressed: _addRow, icon: const Icon(Icons.add), label: const Text('إضافة سطر')),
                   const SizedBox(width: 12),
+                  Expanded(child: Text('صفوف صالحة: ${validCount()}', style: TextStyle(fontWeight: FontWeight.w600))),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
-                      onPressed: () async {
-                        // create items from rows
-                        final items = <ItemModel>[];
-                        for (final r in _rows) {
-                          final q = double.tryParse(r.qty.text) ?? 0;
-                          final p = double.tryParse(r.price.text) ?? 0;
-                          if (q <= 0 || p <= 0) continue;
-                          items.add(ItemModel(
-                              id: '', menuId: menuId, categoryId: r.catId, qty: q, unitPrice: p, total: q * p, notes: r.name.text, updatedAt: DateTime.now().millisecondsSinceEpoch));
-                        }
-                        if (items.isEmpty) return;
-                        // batch create in one transaction
-                        await c.bulkAdd(items);
-                        Get.back();
-                      },
+                      onPressed: validCount() > 0
+                          ? () async {
+                              // create items from rows
+                              final items = <ItemModel>[];
+                              for (final r in _rows) {
+                                final q = double.tryParse(r.qty.text) ?? 0;
+                                final p = double.tryParse(r.price.text) ?? 0;
+                                if (q <= 0 || p <= 0 || r.catId == null) continue;
+                                items.add(ItemModel(id: '', menuId: menuId, categoryId: r.catId, qty: q, unitPrice: p, total: q * p, notes: '', updatedAt: DateTime.now().millisecondsSinceEpoch));
+                              }
+                              if (items.isEmpty) return;
+                              // batch create in one transaction
+                              await c.bulkAdd(items);
+                              Get.back();
+                            }
+                          : null,
                       icon: const Icon(Icons.save),
                       label: const Text('حفظ الكل'))
                 ],
@@ -197,11 +246,9 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
   IconData _iconFor(CategoryModel cat) {
     final name = cat.name.toLowerCase();
     final type = (cat.type ?? '').toLowerCase();
-    if (type.contains('fruit') || name.contains('فاكه') || name.contains('fruit')) return Icons.eco;
-    if (type.contains('vegetable') || name.contains('خض') || name.contains('vegetable')) return Icons.grass;
-    if (type.contains('dairy') || name.contains('لبن') || name.contains('dairy')) return Icons.egg;
-    if (type.contains('meat') || name.contains('لحم') || name.contains('meat')) return Icons.set_meal;
-    if (type.contains('bakery') || name.contains('مخبز') || name.contains('bakery')) return Icons.bakery_dining;
+    if (type.contains('فاكهة') || name.contains('فاكهة') || name.contains('fruit')) return Icons.eco;
+    if (type.contains('خضار') || name.contains('خضار') || name.contains('vegetable')) return Icons.grass;
+  
     return Icons.local_grocery_store;
   }
 
@@ -210,7 +257,8 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
 
 class _BulkRow {
   final TextEditingController name = TextEditingController();
-  final TextEditingController qty = TextEditingController(text: '1');
-  final TextEditingController price = TextEditingController(text: '0');
+  // start empty so placeholders show; validation will treat empty as invalid
+  final TextEditingController qty = TextEditingController();
+  final TextEditingController price = TextEditingController();
   String? catId;
 }

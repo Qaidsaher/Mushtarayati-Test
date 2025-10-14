@@ -65,7 +65,9 @@ class ExportService {
   }) async {
     final doc = pw.Document();
 
+    // Try to load Arabic fonts if provided. If not found, fall back to default.
     pw.Font? arabicFont;
+    pw.Font? arabicFontBold;
     if (fontAsset != null) {
       try {
         final fontData = await rootBundle.load(fontAsset);
@@ -74,11 +76,18 @@ class ExportService {
         arabicFont = null;
       }
     }
+    // If bold variant exists next to provided font, try to load it too
+    try {
+      final boldPath = fontAsset?.replaceFirst('.ttf', '-Bold.ttf');
+      if (boldPath != null) {
+        final bdata = await rootBundle.load(boldPath);
+        arabicFontBold = pw.Font.ttf(bdata);
+      }
+    } catch (_) {
+      arabicFontBold = arabicFont;
+    }
 
-    final baseStyle = pw.TextStyle(
-      font: arabicFont,
-      fontSize: 12,
-    );
+    final baseStyle = pw.TextStyle(font: arabicFont, fontSize: 12);
 
     Uint8List? logoBytes;
     if (logoAsset != null) {
@@ -96,77 +105,81 @@ class ExportService {
         build: (context) {
           final widgets = <pw.Widget>[];
 
-          // Header
           widgets.add(
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                if (logoBytes != null)
-                  pw.Container(
-                    width: 80,
-                    height: 80,
-                    child: pw.Image(pw.MemoryImage(logoBytes)),
+            pw.Directionality(
+              textDirection: pw.TextDirection.rtl,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  // place text column first so logo appears on the right in RTL
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text('مشترياتي', style: pw.TextStyle(font: arabicFontBold ?? arabicFont, fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(height: 4),
+                        pw.Text('تقرير المشتريات', style: pw.TextStyle(font: arabicFontBold ?? arabicFont, fontSize: 16)),
+                        pw.SizedBox(height: 6),
+                        pw.Text('تاريخ الإنشاء: ${DateTime.now()}', style: pw.TextStyle(fontSize: 10, font: arabicFont)),
+                        if (arabicFont == null) pw.SizedBox(height: 8),
+                        if (arabicFont == null)
+                          pw.Text('تنبيه: لم يتم تحميل خط عربي. أضف ملف TTF في assets/fonts/ ثم مرّر مسار الخط عند التصدير لعرض النص العربي بشكل صحيح.',
+                              style: pw.TextStyle(fontSize: 8, color: PdfColors.red)),
+                      ],
+                    ),
                   ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'تقرير المشتريات',
-                      style: pw.TextStyle(
-                        fontSize: 20,
-                        fontWeight: pw.FontWeight.bold,
-                        font: arabicFont,
-                      ),
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Text(
-                      'تاريخ الإنشاء: ${DateTime.now()}',
-                      style: pw.TextStyle(fontSize: 10, font: arabicFont),
-                    ),
-                  ],
-                ),
-              ],
+                  if (logoBytes != null) pw.Container(width: 80, height: 80, child: pw.Image(pw.MemoryImage(logoBytes))),
+                ],
+              ),
             ),
           );
 
           widgets.add(pw.SizedBox(height: 12));
-          widgets.add(pw.Text('الفلاتر: ${filters ?? {}}', style: baseStyle));
+          widgets.add(pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Text('الفلاتر: ${filters ?? {}}', style: baseStyle)));
           widgets.add(pw.SizedBox(height: 12));
 
           // Monthly summary
-          widgets.add(
-            pw.Text('ملخص يومي / شهري',
-                style: pw.TextStyle(
-                    fontSize: 14, fontWeight: pw.FontWeight.bold)),
-          );
+          widgets.add(pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Text('ملخص يومي / شهري', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: arabicFontBold ?? arabicFont))));
           widgets.add(pw.SizedBox(height: 6));
+          final monthHeaders = ['الفترة', 'المجموع'];
           widgets.add(
-            pw.TableHelper.fromTextArray(
-              data: monthly
-                  .map((r) => [r['day'] ?? '', (r['total'] ?? 0).toString()])
-                  .toList(),
-              headers: ['الفترة', 'المجموع'],
+            pw.Directionality(
+              textDirection: pw.TextDirection.rtl,
+              child: pw.TableHelper.fromTextArray(
+                headers: monthHeaders,
+                data: monthly.map((r) => [r['day'] ?? '', (r['total'] ?? 0).toString()]).toList(),
+                headerStyle: pw.TextStyle(font: arabicFontBold ?? arabicFont, fontSize: 12),
+                cellStyle: pw.TextStyle(font: arabicFont, fontSize: 11),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                cellAlignments: {0: pw.Alignment.centerRight, 1: pw.Alignment.centerRight},
+              ),
             ),
           );
           widgets.add(pw.SizedBox(height: 12));
 
           // Recent purchases
-          widgets.add(pw.Text('آخر المشتريات',
-              style: pw.TextStyle(
-                  fontSize: 14, fontWeight: pw.FontWeight.bold)));
+          widgets.add(pw.Directionality(textDirection: pw.TextDirection.rtl, child: pw.Text('آخر المشتريات', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: arabicFontBold ?? arabicFont))));
           widgets.add(pw.SizedBox(height: 6));
+          final recentHeaders = ['ملاحظة', 'كمية', 'سعر', 'مجموع', 'فرع'];
           widgets.add(
-            pw.TableHelper.fromTextArray(
-              data: recent
-                  .map((r) => [
-                        r['notes'] ?? '',
-                        (r['qty'] ?? 0).toString(),
-                        (r['unit_price'] ?? 0).toString(),
-                        (r['total'] ?? 0).toString(),
-                        r['branch_id'] ?? '',
-                      ])
-                  .toList(),
-              headers: ['ملاحظة', 'كمية', 'سعر', 'مجموع', 'فرع'],
+            pw.Directionality(
+              textDirection: pw.TextDirection.rtl,
+              child: pw.TableHelper.fromTextArray(
+                headers: recentHeaders,
+                data: recent
+                    .map((r) => [r['notes'] ?? '', (r['qty'] ?? 0).toString(), (r['unit_price'] ?? 0).toString(), (r['total'] ?? 0).toString(), r['branch_id'] ?? '']).toList(),
+                headerStyle: pw.TextStyle(font: arabicFontBold ?? arabicFont, fontSize: 12),
+                cellStyle: pw.TextStyle(font: arabicFont, fontSize: 10),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                cellAlignments: {
+                  0: pw.Alignment.centerRight,
+                  1: pw.Alignment.centerRight,
+                  2: pw.Alignment.centerRight,
+                  3: pw.Alignment.centerRight,
+                  4: pw.Alignment.centerRight,
+                },
+                columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(1), 2: const pw.FlexColumnWidth(1), 3: const pw.FlexColumnWidth(1), 4: const pw.FlexColumnWidth(1)},
+              ),
             ),
           );
 
@@ -237,5 +250,113 @@ class ExportService {
         '${dir.path}/${filenamePrefix ?? 'saher_export'}_${DateTime.now().millisecondsSinceEpoch}.csv');
     await file.writeAsString(sb.toString());
     return file;
+  }
+
+  // --- Convenience exports for specific menu, branch, or all data ---
+
+  /// Create a PDF report for a specific menu.
+  static Future<File> createPdfReportForMenu({
+    required String menuName,
+    required List<Map<String, dynamic>> rows,
+    String? logoAsset,
+    String? fontAsset,
+  }) async {
+    final doc = pw.Document();
+    pw.Font? arabicFont;
+    if (fontAsset != null) {
+      try {
+        final fontData = await rootBundle.load(fontAsset);
+        arabicFont = pw.Font.ttf(fontData);
+      } catch (_) {
+        arabicFont = null;
+      }
+    }
+
+    Uint8List? logoBytes;
+    if (logoAsset != null) {
+      try {
+        final lb = await rootBundle.load(logoAsset);
+        logoBytes = lb.buffer.asUint8List();
+      } catch (_) {
+        logoBytes = null;
+      }
+    }
+
+    doc.addPage(pw.MultiPage(build: (context) {
+      final List<pw.Widget> w = [];
+      w.add(pw.Directionality(
+        textDirection: pw.TextDirection.rtl,
+        child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          pw.Expanded(
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+              pw.Text('مشترياتي', style: pw.TextStyle(font: arabicFont, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text('تقرير القائمة: $menuName', style: pw.TextStyle(font: arabicFont, fontSize: 14)),
+              pw.SizedBox(height: 6),
+              pw.Text('تاريخ الإنشاء: ${DateTime.now()}', style: pw.TextStyle(fontSize: 9, font: arabicFont)),
+            ]),
+          ),
+          if (logoBytes != null) pw.Container(width: 64, height: 64, child: pw.Image(pw.MemoryImage(logoBytes))),
+        ]),
+      ));
+
+      w.add(pw.SizedBox(height: 12));
+      // table header (Arabic)
+      final headers = rows.isNotEmpty ? rows.first.keys.toList() : <String>[];
+      w.add(pw.Directionality(
+        textDirection: pw.TextDirection.rtl,
+        child: pw.TableHelper.fromTextArray(
+          headers: headers.map((h) => h.toString()).toList(),
+          data: rows.map((r) => headers.map((h) => (r[h] ?? '').toString()).toList()).toList(),
+          headerStyle: pw.TextStyle(font: arabicFont, fontSize: 12),
+          cellStyle: pw.TextStyle(font: arabicFont, fontSize: 10),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          cellAlignments: { for (var i = 0; i < headers.length; i++) i: pw.Alignment.centerRight },
+        ),
+      ));
+
+      return w;
+    }));
+
+    final bytes = await doc.save();
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/report_menu_${menuName}_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    await file.writeAsBytes(bytes);
+    return file;
+  }
+
+  /// Create a PDF report for a specific branch.
+  static Future<File> createPdfReportForBranch({
+    required String branchName,
+    required List<Map<String, dynamic>> rows,
+    String? logoAsset,
+    String? fontAsset,
+  }) async {
+    // reuse the menu generator but change heading
+    return createPdfReportForMenu(menuName: branchName, rows: rows, logoAsset: logoAsset, fontAsset: fontAsset);
+  }
+
+  /// Create a PDF report for all items (general report).
+  static Future<File> createPdfReportForAll({
+    required List<Map<String, dynamic>> rows,
+    String? logoAsset,
+    String? fontAsset,
+  }) async {
+    return createPdfReportForMenu(menuName: 'كل المشتريات', rows: rows, logoAsset: logoAsset, fontAsset: fontAsset);
+  }
+
+  /// Create Excel for menu/branch/all
+  static Future<File> createExcelForEntity({required String prefix, required List<Map<String, dynamic>> rows}) async {
+    return createExcelReport(rows: rows).then((f) async {
+      final dir = await getApplicationDocumentsDirectory();
+      final dest = File('${dir.path}/${prefix}_${DateTime.now().millisecondsSinceEpoch}.xlsx');
+      await f.copy(dest.path);
+      return dest;
+    });
+  }
+
+  /// Create CSV for menu/branch/all
+  static Future<File> createCsvForEntity({required String prefix, required List<Map<String, dynamic>> rows}) async {
+    return createCsvReport(rows: rows, filenamePrefix: prefix);
   }
 }

@@ -46,3 +46,10 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/logo1.png
+  # Optional: add an Arabic font (e.g. NotoNaskhArabic) to improve PDF Arabic rendering.
+  # Create folder assets/fonts/ and place TTF files there, then uncomment and edit the section below.
+  fonts:
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-Regular.ttf
+        - asset: assets/fonts/NotoNaskhArabic-Bold.ttf
