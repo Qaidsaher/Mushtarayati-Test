@@ -80,11 +80,8 @@ class ThemeController extends GetxController {
       themeMode.value = ThemeMode.system;
     }
 
-    // Load color seed
-    final savedColor = box.read<int>(_kColorKey);
-    if (savedColor != null) {
-      colorSeed.value = Color(savedColor);
-    }
+    // Always use green as default theme color
+    colorSeed.value = Palette.primary;
 
     // Load font settings
     final savedFont = box.read<String>(_kFontKey);
