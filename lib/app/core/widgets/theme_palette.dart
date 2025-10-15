@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/theme_controller.dart';
+import '../theme/palette.dart';
 
+/// Modern theme color palette selector
 class ThemePalette extends StatelessWidget {
   const ThemePalette({super.key, this.onSelected});
 
@@ -12,42 +14,86 @@ class ThemePalette extends StatelessWidget {
     final themeCtrl = Get.find<ThemeController>();
 
     return Obx(() {
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: themeCtrl.availableColors.map((c) {
-          final selected = c == themeCtrl.colorSeed.value;
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1,
+        ),
+        itemCount: Palette.themeColors.length,
+        itemBuilder: (context, index) {
+          final colorPalette = Palette.themeColors[index];
+          final selected =
+              themeCtrl.colorSeed.value.value == colorPalette.seed.value;
+
           return GestureDetector(
             onTap: () {
-              themeCtrl.setColor(c);
-              if (onSelected != null) onSelected!(c);
+              themeCtrl.setColor(colorPalette.seed);
+              if (onSelected != null) onSelected!(colorPalette.seed);
             },
             child: Tooltip(
-              message: '#${c.a.toInt().toRadixString(16).padLeft(2, '0')}${c.r.toInt().toRadixString(16).padLeft(2, '0')}${c.g.toInt().toRadixString(16).padLeft(2, '0')}${c.b.toInt().toRadixString(16).padLeft(2, '0')}'.toUpperCase(),
+              message: '${colorPalette.name}\n${colorPalette.description}',
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
-                width: selected ? 68 : 56,
-                height: selected ? 68 : 56,
+                decoration: BoxDecoration(
+                  color: colorPalette.seed,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color:
+                        selected
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.transparent,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    if (selected)
+                      BoxShadow(
+                        color: colorPalette.seed.withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      )
+                    else
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                  ],
+                ),
                 child: Stack(
-                  alignment: Alignment.center,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: selected ? Border.all(color: Colors.white, width: 3) : null,
-            boxShadow: selected
-              ? [BoxShadow(color: c.withAlpha((0.4 * 255).toInt()), blurRadius: 8, offset: const Offset(0, 4))]
-              : [BoxShadow(color: Colors.black.withAlpha((0.06 * 255).toInt()), blurRadius: 4, offset: const Offset(0, 2))],
+                    Center(
+                      child: Text(
+                        colorPalette.icon,
+                        style: const TextStyle(fontSize: 28),
                       ),
                     ),
-                    if (selected) const Icon(Icons.check, color: Colors.white, size: 28)
+                    if (selected)
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.check_circle,
+                            color: colorPalette.seed,
+                            size: 20,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
           );
-        }).toList(),
+        },
       );
     });
   }
