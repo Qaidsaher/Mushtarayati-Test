@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controllers/menu_items_controller.dart';
 import '../../../data/models/item_model.dart';
@@ -424,9 +425,10 @@ class _MenuItemsBulkPageState extends State<MenuItemsBulkPage> {
                           flex: 2,
                           child: TextField(
                             controller: data.qtyController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             onChanged: (_) => setState(() {}),
                             decoration: InputDecoration(
                               labelText: 'الكمية',
@@ -667,7 +669,7 @@ class _CategoryData {
 
   _CategoryData({required this.categoryId});
 
-  double get qty => double.tryParse(qtyController.text) ?? 0;
+  int get qty => int.tryParse(qtyController.text) ?? 0;
   double get price => double.tryParse(priceController.text) ?? 0;
   double get total => qty * price;
   bool get isValid => qty > 0 && price > 0;

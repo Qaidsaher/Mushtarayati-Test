@@ -106,17 +106,14 @@ class Seeders {
     // استخدام transaction لتحسين السرعة
     await db.transaction((txn) async {
       for (final c in categories) {
-        await txn.insert(
-          'categories',
-          {
-            'id': uuid.v4(),
-            'name': c['name'],
-            'type': c['type'],
-            'updated_at': now,
-            'deleted': 0,
-          },
-          conflictAlgorithm: ConflictAlgorithm.ignore,
-        );
+        await txn.insert('categories', {
+          'id': uuid.v4(),
+          'name': c['name'],
+          'type': c['type'],
+          'last_price': 0,
+          'updated_at': now,
+          'deleted': 0,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     });
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controllers/menu_items_controller.dart';
 import '../../../data/models/item_model.dart';
@@ -51,35 +52,36 @@ class MenuItemsPage extends StatelessWidget {
                   await _exportPdf(context, c);
                 }
               },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'excel',
-                  child: Row(
-                    children: [
-                      Icon(Icons.table_chart, color: Colors.green[700]),
-                      const SizedBox(width: 12),
-                      const Text('تصدير Excel'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'pdf',
-                  child: Row(
-                    children: [
-                      Icon(Icons.picture_as_pdf, color: Colors.red[700]),
-                      const SizedBox(width: 12),
-                      const Text('تصدير PDF'),
-                    ],
-                  ),
-                ),
-              ],
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      value: 'excel',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart, color: Colors.green[700]),
+                          const SizedBox(width: 12),
+                          const Text('تصدير Excel'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'pdf',
+                      child: Row(
+                        children: [
+                          Icon(Icons.picture_as_pdf, color: Colors.red[700]),
+                          const SizedBox(width: 12),
+                          const Text('تصدير PDF'),
+                        ],
+                      ),
+                    ),
+                  ],
             ),
             const SizedBox(width: 8),
           ],
         ),
         floatingActionButton: Obx(() {
           if (c.isLoading.value) return const SizedBox.shrink();
-          
+
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -236,12 +238,9 @@ class MenuItemsPage extends StatelessWidget {
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                   itemCount: c.items.length,
-                  itemBuilder: (context, i) => _buildModernItemCard(
-                    context,
-                    c,
-                    c.items[i],
-                    i,
-                  ),
+                  itemBuilder:
+                      (context, i) =>
+                          _buildModernItemCard(context, c, c.items[i], i),
                 ),
               ),
             ],
@@ -260,11 +259,7 @@ class MenuItemsPage extends StatelessWidget {
     final theme = Theme.of(context);
     return Column(
       children: [
-        Icon(
-          icon,
-          color: theme.colorScheme.onPrimaryContainer,
-          size: 28,
-        ),
+        Icon(icon, color: theme.colorScheme.onPrimaryContainer, size: 28),
         const SizedBox(height: 8),
         Text(
           label,
@@ -372,7 +367,7 @@ class MenuItemsPage extends StatelessWidget {
                     child: Icon(icon, color: color, size: 28),
                   ),
                   const SizedBox(width: 16),
-                  
+
                   // Details
                   Expanded(
                     child: Column(
@@ -415,7 +410,7 @@ class MenuItemsPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
+
                   // Total and actions
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -443,8 +438,8 @@ class MenuItemsPage extends StatelessWidget {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: () =>
-                                _showModernItemDialog(context, c, item),
+                            onPressed:
+                                () => _showModernItemDialog(context, c, item),
                             tooltip: 'تعديل',
                             style: IconButton.styleFrom(
                               backgroundColor:
@@ -459,7 +454,9 @@ class MenuItemsPage extends StatelessWidget {
                               final confirm = await Get.dialog<bool>(
                                 AlertDialog(
                                   title: const Text('تأكيد الحذف'),
-                                  content: const Text('هل تريد حذف هذا العنصر؟'),
+                                  content: const Text(
+                                    'هل تريد حذف هذا العنصر؟',
+                                  ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Get.back(result: false),
@@ -480,9 +477,8 @@ class MenuItemsPage extends StatelessWidget {
                             },
                             tooltip: 'حذف',
                             style: IconButton.styleFrom(
-                              backgroundColor:
-                                  theme.colorScheme.errorContainer
-                                      .withOpacity(0.5),
+                              backgroundColor: theme.colorScheme.errorContainer
+                                  .withOpacity(0.5),
                               foregroundColor: theme.colorScheme.error,
                             ),
                           ),
@@ -527,23 +523,33 @@ class MenuItemsPage extends StatelessWidget {
   IconData _getCategoryIcon(CategoryModel? cat) {
     final name = (cat?.name ?? '').toLowerCase();
     final type = (cat?.type ?? '').toLowerCase();
-    
-    if (type.contains('فاكهة') || name.contains('فاكهة') || name.contains('fruit')) {
+
+    if (type.contains('فاكهة') ||
+        name.contains('فاكهة') ||
+        name.contains('fruit')) {
       return Icons.apple_rounded;
     }
-    if (type.contains('خضار') || name.contains('خضار') || name.contains('vegetable')) {
+    if (type.contains('خضار') ||
+        name.contains('خضار') ||
+        name.contains('vegetable')) {
       return Icons.eco_rounded;
     }
     if (type.contains('لحم') || name.contains('لحم') || name.contains('meat')) {
       return Icons.set_meal_rounded;
     }
-    if (type.contains('ألبان') || name.contains('ألبان') || name.contains('dairy')) {
+    if (type.contains('ألبان') ||
+        name.contains('ألبان') ||
+        name.contains('dairy')) {
       return Icons.egg_rounded;
     }
-    if (type.contains('مخبوزات') || name.contains('مخبوزات') || name.contains('bakery')) {
+    if (type.contains('مخبوزات') ||
+        name.contains('مخبوزات') ||
+        name.contains('bakery')) {
       return Icons.bakery_dining_rounded;
     }
-    if (type.contains('مشروبات') || name.contains('مشروبات') || name.contains('beverage')) {
+    if (type.contains('مشروبات') ||
+        name.contains('مشروبات') ||
+        name.contains('beverage')) {
       return Icons.local_cafe_rounded;
     }
     return Icons.shopping_basket_rounded;
@@ -552,23 +558,33 @@ class MenuItemsPage extends StatelessWidget {
   Color _getCategoryColor(CategoryModel? cat, ThemeData theme) {
     final name = (cat?.name ?? '').toLowerCase();
     final type = (cat?.type ?? '').toLowerCase();
-    
-    if (type.contains('فاكهة') || name.contains('فاكهة') || name.contains('fruit')) {
+
+    if (type.contains('فاكهة') ||
+        name.contains('فاكهة') ||
+        name.contains('fruit')) {
       return Colors.orange;
     }
-    if (type.contains('خضار') || name.contains('خضار') || name.contains('vegetable')) {
+    if (type.contains('خضار') ||
+        name.contains('خضار') ||
+        name.contains('vegetable')) {
       return Colors.green;
     }
     if (type.contains('لحم') || name.contains('لحم') || name.contains('meat')) {
       return Colors.red[700]!;
     }
-    if (type.contains('ألبان') || name.contains('ألبان') || name.contains('dairy')) {
+    if (type.contains('ألبان') ||
+        name.contains('ألبان') ||
+        name.contains('dairy')) {
       return Colors.blue;
     }
-    if (type.contains('مخبوزات') || name.contains('مخبوزات') || name.contains('bakery')) {
+    if (type.contains('مخبوزات') ||
+        name.contains('مخبوزات') ||
+        name.contains('bakery')) {
       return Colors.brown;
     }
-    if (type.contains('مشروبات') || name.contains('مشروبات') || name.contains('beverage')) {
+    if (type.contains('مشروبات') ||
+        name.contains('مشروبات') ||
+        name.contains('beverage')) {
       return Colors.purple;
     }
     return theme.colorScheme.primary;
@@ -620,16 +636,19 @@ class MenuItemsPage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       );
 
-      final rows = c.items.map((it) {
-        final cat = c.categories.firstWhereOrNull((x) => x.id == it.categoryId);
-        return {
-          'الفئة': cat?.name ?? '',
-          'الكمية': it.qty,
-          'سعر الوحدة': it.unitPrice,
-          'الإجمالي': (it.qty * it.unitPrice),
-          'ملاحظات': it.notes ?? '',
-        };
-      }).toList();
+      final rows =
+          c.items.map((it) {
+            final cat = c.categories.firstWhereOrNull(
+              (x) => x.id == it.categoryId,
+            );
+            return {
+              'الفئة': cat?.name ?? '',
+              'الكمية': it.qty,
+              'سعر الوحدة': it.unitPrice,
+              'الإجمالي': (it.qty * it.unitPrice),
+              'ملاحظات': it.notes ?? '',
+            };
+          }).toList();
 
       final file = await ExportService.createExcelForEntity(
         prefix: 'menu_${c.menuId}_items',
@@ -702,16 +721,19 @@ class MenuItemsPage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       );
 
-      final arabicRows = c.items.map((it) {
-        final cat = c.categories.firstWhereOrNull((x) => x.id == it.categoryId);
-        return {
-          'الفئة': cat?.name ?? '',
-          'الكمية': it.qty,
-          'سعر الوحدة': it.unitPrice,
-          'الإجمالي': (it.qty * it.unitPrice),
-          'ملاحظات': it.notes ?? '',
-        };
-      }).toList();
+      final arabicRows =
+          c.items.map((it) {
+            final cat = c.categories.firstWhereOrNull(
+              (x) => x.id == it.categoryId,
+            );
+            return {
+              'الفئة': cat?.name ?? '',
+              'الكمية': it.qty,
+              'سعر الوحدة': it.unitPrice,
+              'الإجمالي': (it.qty * it.unitPrice),
+              'ملاحظات': it.notes ?? '',
+            };
+          }).toList();
 
       final file = await ExportService.createPdfReportForMenu(
         menuName: 'عناصر القائمة',
@@ -757,280 +779,307 @@ class MenuItemsPage extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (ctx, setState) {
-          final theme = Theme.of(context);
-          final total = (double.tryParse(qty.text) ?? 0) *
-              (double.tryParse(price.text) ?? 0);
+      builder:
+          (sheetContext) => StatefulBuilder(
+            builder: (ctx, setState) {
+              final theme = Theme.of(context);
+              final quantity = int.tryParse(qty.text) ?? 0;
+              final unitPrice = double.tryParse(price.text) ?? 0;
+              final total = quantity * unitPrice;
 
-          return Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-            ),
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Handle bar
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.onSurfaceVariant
-                              .withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-
-                    // Title
-                    Row(
+              return Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            item == null ? Icons.add_shopping_cart_rounded : Icons.edit_rounded,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            item == null ? 'إضافة عنصر جديد' : 'تعديل العنصر',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                        // Handle bar
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
 
-                    // Category dropdown
-                    DropdownButtonFormField<String>(
-                      value: selectedCatId,
-                      decoration: InputDecoration(
-                        labelText: 'الفئة',
-                        prefixIcon: Icon(
-                          selectedCatId != null
-                              ? _getCategoryIcon(c.categories.firstWhereOrNull(
-                                  (cat) => cat.id == selectedCatId))
-                              : Icons.category_outlined,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        filled: true,
-                      ),
-                      items: c.categories
-                          .map((cat) => DropdownMenuItem(
-                                value: cat.id,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _getCategoryIcon(cat),
-                                      size: 20,
-                                      color: _getCategoryColor(cat, theme),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(cat.name),
-                                  ],
+                        // Title
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                item == null
+                                    ? Icons.add_shopping_cart_rounded
+                                    : Icons.edit_rounded,
+                                color: theme.colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                item == null
+                                    ? 'إضافة عنصر جديد'
+                                    : 'تعديل العنصر',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              ))
-                          .toList(),
-                      onChanged: (v) => setState(() => selectedCatId = v),
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'اختر فئة' : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Quantity and Price in a row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: qty,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'الكمية',
-                              prefixIcon: const Icon(Icons.shopping_cart_outlined),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
                               ),
-                              filled: true,
                             ),
-                            validator: (v) {
-                              final q = double.tryParse(v ?? '0') ?? 0;
-                              if (q <= 0) {
-                                return 'الكمية يجب أن تكون أكبر من صفر';
-                              }
-                              return null;
-                            },
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: price,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'السعر',
-                              prefixIcon: const Icon(Icons.attach_money),
-                              suffixText: 'ر.س',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              filled: true,
-                            ),
-                            validator: (v) {
-                              final p = double.tryParse(v ?? '0') ?? 0;
-                              if (p <= 0) {
-                                return 'السعر يجب أن يكون أكبر من صفر';
-                              }
-                              return null;
-                            },
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Notes
-                    TextFormField(
-                      controller: notes,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'ملاحظات (اختياري)',
-                        prefixIcon: const Icon(Icons.note_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        filled: true,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Total display
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.colorScheme.primaryContainer,
-                            theme.colorScheme.secondaryContainer,
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'الإجمالي:',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          Text(
-                            '${total.toStringAsFixed(2)} ر.س',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // Action buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(sheetContext),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                        // Category dropdown
+                        DropdownButtonFormField<String>(
+                          value: selectedCatId,
+                          decoration: InputDecoration(
+                            labelText: 'الفئة',
+                            prefixIcon: Icon(
+                              selectedCatId != null
+                                  ? _getCategoryIcon(
+                                    c.categories.firstWhereOrNull(
+                                      (cat) => cat.id == selectedCatId,
+                                    ),
+                                  )
+                                  : Icons.category_outlined,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            filled: true,
+                          ),
+                          items:
+                              c.categories
+                                  .map(
+                                    (cat) => DropdownMenuItem(
+                                      value: cat.id,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            _getCategoryIcon(cat),
+                                            size: 20,
+                                            color: _getCategoryColor(
+                                              cat,
+                                              theme,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(cat.name),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (v) => setState(() => selectedCatId = v),
+                          validator:
+                              (v) =>
+                                  (v == null || v.isEmpty) ? 'اختر فئة' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Quantity and Price in a row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: qty,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                decoration: InputDecoration(
+                                  labelText: 'الكمية',
+                                  prefixIcon: const Icon(
+                                    Icons.shopping_cart_outlined,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  filled: true,
+                                ),
+                                validator: (v) {
+                                  final q = int.tryParse(v ?? '0') ?? 0;
+                                  if (q <= 0) {
+                                    return 'الكمية يجب أن تكون أكبر من صفر';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (_) => setState(() {}),
                               ),
                             ),
-                            child: const Text('إلغاء'),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: price,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'السعر',
+                                  prefixIcon: const Icon(Icons.attach_money),
+                                  suffixText: 'ر.س',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  filled: true,
+                                ),
+                                validator: (v) {
+                                  final p = double.tryParse(v ?? '0') ?? 0;
+                                  if (p <= 0) {
+                                    return 'السعر يجب أن يكون أكبر من صفر';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Notes
+                        TextFormField(
+                          controller: notes,
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            labelText: 'ملاحظات (اختياري)',
+                            prefixIcon: const Icon(Icons.note_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            filled: true,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton.icon(
-                            onPressed: () async {
-                              if (!(formKey.currentState?.validate() ?? false)) {
-                                return;
-                              }
-                              final q = double.tryParse(qty.text) ?? 0;
-                              final p = double.tryParse(price.text) ?? 0;
+                        const SizedBox(height: 20),
 
-                              final newItem = ItemModel(
-                                id: item?.id ?? '',
-                                menuId: c.menuId,
-                                categoryId: selectedCatId,
-                                qty: q,
-                                unitPrice: p,
-                                total: q * p,
-                                notes: notes.text.isEmpty ? null : notes.text,
-                                updatedAt:
-                                    DateTime.now().millisecondsSinceEpoch,
-                              );
-                              
-                              Navigator.pop(sheetContext);
-                              await c.addOrUpdate(newItem);
-                              
-                              Get.snackbar(
-                                'تم',
-                                item == null
-                                    ? 'تمت إضافة العنصر بنجاح'
-                                    : 'تم تعديل العنصر بنجاح',
-                                snackPosition: SnackPosition.BOTTOM,
-                                backgroundColor: Colors.green[100],
-                              );
-                            },
-                            icon: const Icon(Icons.check_rounded),
-                            label: Text(item == null ? 'إضافة' : 'حفظ'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                        // Total display
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.colorScheme.primaryContainer,
+                                theme.colorScheme.secondaryContainer,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'الإجمالي:',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                              Text(
+                                '${total.toStringAsFixed(2)} ر.س',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Action buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(sheetContext),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: const Text('إلغاء'),
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: FilledButton.icon(
+                                onPressed: () async {
+                                  if (!(formKey.currentState?.validate() ??
+                                      false)) {
+                                    return;
+                                  }
+                                  final q = int.tryParse(qty.text) ?? 0;
+                                  final p = double.tryParse(price.text) ?? 0;
+
+                                  final newItem = ItemModel(
+                                    id: item?.id ?? '',
+                                    menuId: c.menuId,
+                                    categoryId: selectedCatId,
+                                    qty: q,
+                                    unitPrice: p,
+                                    total: q * p,
+                                    notes:
+                                        notes.text.isEmpty ? null : notes.text,
+                                    updatedAt:
+                                        DateTime.now().millisecondsSinceEpoch,
+                                  );
+
+                                  Navigator.pop(sheetContext);
+                                  await c.addOrUpdate(newItem);
+
+                                  Get.snackbar(
+                                    'تم',
+                                    item == null
+                                        ? 'تمت إضافة العنصر بنجاح'
+                                        : 'تم تعديل العنصر بنجاح',
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    backgroundColor: Colors.green[100],
+                                  );
+                                },
+                                icon: const Icon(Icons.check_rounded),
+                                label: Text(item == null ? 'إضافة' : 'حفظ'),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 }
