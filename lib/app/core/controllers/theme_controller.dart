@@ -37,7 +37,7 @@ class ThemeController extends GetxController {
   final box = GetStorage();
 
   final themeMode = ThemeMode.system.obs;
-  final colorSeed = Palette.primary.obs;
+  final colorSeed = Palette.primary.obs; // Default theme is modern green
   final fontFamily = 'Tajawal'.obs;
   final baseFontSize = 16.0.obs; // Increased default for better readability
   final highContrast = false.obs; // Accessibility feature

@@ -1,43 +1,115 @@
-
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import '../../../../app/data/repositories/auth_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../data/repositories/auth_repository.dart';
+import '../../../core/controllers/user_controller.dart';
 
 class AuthController extends GetxController {
   final isLoading = false.obs;
+  final errorMessage = ''.obs;
   final AuthRepository _repo = AuthRepository();
   final _box = GetStorage();
   static const _kRememberKey = 'auth_remember';
 
   Future<void> login(String email, String password) async {
+    errorMessage.value = '';
     isLoading.value = true;
-    final res = await _repo.login(email.trim(), password);
-    isLoading.value = false;
-    if (res.success) {
-      // preserve remember preference (if set previously) - default false
-      final remember = _box.read<bool>(_kRememberKey) ?? false;
-      if (remember) {
-        // Keep user signed in via Firebase persistent session
+
+    try {
+      final res = await _repo.login(email.trim(), password);
+      isLoading.value = false;
+
+      if (res.success) {
+        // preserve remember preference
+        final remember = _box.read<bool>(_kRememberKey) ?? false;
+        if (remember) {
+          // Keep user signed in via Firebase persistent session
+        }
+
+        // Show success message
+        Get.snackbar(
+          'مرحباً',
+          'تم تسجيل الدخول بنجاح',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.green.withOpacity(0.9),
+          colorText: Colors.white,
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+          duration: const Duration(seconds: 2),
+          margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+        );
+
+        await Future.delayed(const Duration(milliseconds: 500));
+        Get.offAllNamed('/home');
+      } else {
+        errorMessage.value = res.message ?? 'حدث خطأ في تسجيل الدخول';
+        _showErrorSnackbar(errorMessage.value);
       }
-      Get.offAllNamed('/home');
-    } else {
-      Get.snackbar('خطأ', res.message ?? 'حدث خطأ');
+    } catch (e) {
+      isLoading.value = false;
+      errorMessage.value = 'حدث خطأ غير متوقع: ${e.toString()}';
+      _showErrorSnackbar(errorMessage.value);
     }
   }
 
-  /// Set the 'remember me' flag. If true, the app will not prompt login on next start
+  /// Set the 'remember me' flag
   void setRemember(bool v) {
     _box.write(_kRememberKey, v);
   }
 
-  Future<void> register(String email, String password) async {
+  Future<void> register(
+    String email,
+    String password,
+    String displayName,
+  ) async {
+    errorMessage.value = '';
     isLoading.value = true;
-    final res = await _repo.register(email.trim(), password);
-    isLoading.value = false;
-    if (res.success) {
-      Get.offAllNamed('/home');
-    } else {
-      Get.snackbar('خطأ', res.message ?? 'حدث خطأ');
+
+    try {
+      final res = await _repo.register(email.trim(), password);
+
+      if (res.success) {
+        // Update display name
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null && displayName.isNotEmpty) {
+          await user.updateDisplayName(displayName);
+
+          // Update user controller
+          try {
+            final userCtrl = Get.find<UserController>();
+            await userCtrl.updateDisplayName(displayName);
+          } catch (_) {
+            // UserController might not be initialized yet
+          }
+        }
+
+        isLoading.value = false;
+
+        // Show success message
+        Get.snackbar(
+          'مرحباً $displayName',
+          'تم إنشاء حسابك بنجاح',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.green.withOpacity(0.9),
+          colorText: Colors.white,
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+          duration: const Duration(seconds: 2),
+          margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+        );
+
+        await Future.delayed(const Duration(milliseconds: 500));
+        Get.offAllNamed('/home');
+      } else {
+        isLoading.value = false;
+        errorMessage.value = res.message ?? 'حدث خطأ في إنشاء الحساب';
+        _showErrorSnackbar(errorMessage.value);
+      }
+    } catch (e) {
+      isLoading.value = false;
+      errorMessage.value = 'حدث خطأ غير متوقع: ${e.toString()}';
+      _showErrorSnackbar(errorMessage.value);
     }
   }
 
@@ -49,26 +121,59 @@ class AuthController extends GetxController {
   }
 
   Future<void> sendPasswordReset(String email) async {
+    errorMessage.value = '';
     isLoading.value = true;
-    final res = await _repo.sendPasswordReset(email.trim());
-    isLoading.value = false;
-    if (res.success) {
-      Get.snackbar('تم', 'تم إرسال رابط إعادة تعيين كلمة المرور');
-      Get.back();
-    } else {
-      Get.snackbar('خطأ', res.message ?? 'حدث خطأ');
+
+    try {
+      final res = await _repo.sendPasswordReset(email.trim());
+      isLoading.value = false;
+
+      if (res.success) {
+        Get.snackbar(
+          'تم بنجاح',
+          'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.green.withOpacity(0.9),
+          colorText: Colors.white,
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+        );
+
+        await Future.delayed(const Duration(milliseconds: 800));
+        Get.back();
+      } else {
+        errorMessage.value = res.message ?? 'حدث خطأ في إرسال الرابط';
+        _showErrorSnackbar(errorMessage.value);
+      }
+    } catch (e) {
+      isLoading.value = false;
+      errorMessage.value = 'حدث خطأ غير متوقع: ${e.toString()}';
+      _showErrorSnackbar(errorMessage.value);
     }
+  }
+
+  void _showErrorSnackbar(String message) {
+    Get.snackbar(
+      'خطأ',
+      message,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.red.withOpacity(0.9),
+      colorText: Colors.white,
+      icon: const Icon(Icons.error, color: Colors.white),
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+    );
   }
 
   @override
   void onInit() {
     super.onInit();
-    // if user previously chose remember and Firebase has a current user, navigate to home
     final remember = _box.read<bool>(_kRememberKey) ?? false;
     if (remember) {
-      // AuthRepository / FirebaseAuth will provide current user on start; rely on app bootstrap to call this controller
-      // We don't await here to avoid blocking startup; simply redirect if user is signed in.
-      // The actual current user check is left to app bootstrap or other services; keep this minimal.
+      // Session will be checked in splash screen
     }
   }
 }

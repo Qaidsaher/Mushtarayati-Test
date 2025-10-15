@@ -1,9 +1,9 @@
 import 'package:get/get.dart';
 import '../modules/auth/bindings/auth_binding.dart';
-import '../modules/auth/views/login_page.dart';
-import '../modules/splash/views/splash_page.dart';
-import '../modules/auth/views/register_page.dart';
-import '../modules/auth/views/forgot_page.dart';
+import '../modules/auth/views/modern_login_page.dart';
+import '../modules/splash/views/modern_splash_page.dart';
+import '../modules/auth/views/modern_register_page.dart';
+import '../modules/auth/views/modern_forgot_page.dart';
 import '../modules/profile/views/profile_settings_page.dart';
 import '../modules/shell/views/shell_page.dart';
 import '../modules/home/bindings/home_binding.dart';
@@ -21,21 +21,27 @@ part 'app_routes.dart';
 
 class AppPages {
   static final pages = [
-    GetPage(name: Routes.splash, page: () => const SplashPage()),
+    GetPage(name: Routes.splash, page: () => const ModernSplashPage()),
     GetPage(
       name: Routes.login,
-      page: () => LoginPage(),
+      page: () => const ModernLoginPage(),
       binding: AuthBinding(),
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: Routes.register,
-      page: () => RegisterPage(),
+      page: () => const ModernRegisterPage(),
       binding: AuthBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(
       name: Routes.forgot,
-      page: () => ForgotPage(),
+      page: () => const ModernForgotPage(),
       binding: AuthBinding(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
     ),
     GetPage(name: Routes.profile, page: () => const ProfileSettingsPage()),
     GetPage(
