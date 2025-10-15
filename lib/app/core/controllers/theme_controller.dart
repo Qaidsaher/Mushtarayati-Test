@@ -70,7 +70,7 @@ class ThemeController extends GetxController {
   }
 
   void _loadSettings() {
-    // Load theme mode
+    // Load theme mode and persist user's choice
     final savedTheme = box.read<String>(_kThemeKey);
     if (savedTheme == 'dark') {
       themeMode.value = ThemeMode.dark;
