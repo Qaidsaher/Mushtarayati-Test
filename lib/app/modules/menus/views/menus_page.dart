@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:saher_kit/app/core/services/day_pdf_export_services.dart';
-import 'package:saher_kit/app/core/services/excel_export_services.dart';
+// import 'package:saher_kit/app/core/services/day_pdf_export_services.dart';
+import 'package:saher_kit/app/core/services/excel_services.dart';
 import '../controllers/menus_controller.dart';
 import '../../categories/controllers/categories_controller.dart';
 import '../../../core/services/pdf_service.dart';
-import '../../../core/services/excel_service.dart';
-// import '../../../core/services/day_services.dart';
 
 /// الصفحة الرئيسية للقوائم اليومية
 class MenusPage extends StatelessWidget {
@@ -130,7 +128,7 @@ class MenusPage extends StatelessWidget {
                                     await ExcelExportServices.createDayStyleExcel(
                                       ds,
                                     );
-                               
+
                                 await PdfService.shareFile(
                                   file,
                                   subject:
@@ -168,11 +166,11 @@ class MenusPage extends StatelessWidget {
                                 }
                                 final ds = c.selectedDate.value;
                                 final file =
-                                    await DayPdfExportServices.createDayHorizontalPdf(
+                                    await PdfService.createDayStylePdf(
                                       ds,
-                                      fontAsset:
-                                          'assets/fonts/NotoNaskhArabic-Regular.ttf',
-                                      logoAsset: 'assets/images/logo.png',
+                                      // fontAsset:
+                                      //     'assets/fonts/NotoNaskhArabic-Regular.ttf',
+                                      // logoAsset: 'assets/images/logo.png',
                                     );
                                 await PdfService.shareFile(
                                   file,
@@ -293,18 +291,7 @@ class MenusPage extends StatelessWidget {
                                     // أزرار التحكم (عرض/حذف)
                                     Column(
                                       children: [
-                                        IconButton(
-                                          tooltip: 'عرض العناصر',
-                                          icon: Icon(
-                                            Icons.list_alt,
-                                            color: theme.colorScheme.primary,
-                                          ),
-                                          onPressed:
-                                              () => Get.toNamed(
-                                                '/menus/items',
-                                                arguments: {'menuId': m.id},
-                                              ),
-                                        ),
+                                      
                                         IconButton(
                                           tooltip: 'حذف',
                                           icon: Icon(
@@ -318,23 +305,68 @@ class MenusPage extends StatelessWidget {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'الإجمالي: ${c.menuTotals[m.id]?.toStringAsFixed(2) ?? '0.00'}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
+                                // Professional chips summary (no extra queries)
+                                Builder(
+                                  builder: (ctx) {
+                                    final double itemsTotal =
+                                        (c.menuTotals[m.id] ?? 0).toDouble();
+                                    final double stationery =
+                                        (m.stationeryExpenses ?? 0).toDouble();
+                                    final double transport =
+                                        (m.transportationExpenses ?? 0)
+                                            .toDouble();
+                                    final double grandTotal =
+                                        itemsTotal + stationery + transport;
+
+                                    return SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: [
+                                          _statChip(
+                                            context,
+                                            Icons.edit_note_rounded,
+                                            'قرطاسية',
+                                            '${stationery.toStringAsFixed(2)} ر.س',
+                                            Colors.purple,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _statChip(
+                                            context,
+                                            Icons.local_shipping_rounded,
+                                            'نقل',
+                                            '${transport.toStringAsFixed(2)} ر.س',
+                                            Colors.orange,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _statChip(
+                                            context,
+                                            Icons.payments_rounded,
+                                            'إجمالي العناصر',
+                                            '${itemsTotal.toStringAsFixed(2)} ر.س',
+                                            theme.colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _statChip(
+                                            context,
+                                            Icons
+                                                .account_balance_wallet_rounded,
+                                            'الإجمالي الكلي',
+                                            '${grandTotal.toStringAsFixed(2)} ر.س',
+                                            Colors.green,
+                                            highlighted: true,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _statChip(
+                                            context,
+                                            Icons.category_rounded,
+                                            'عدد الفئات',
+                                            '${c.menuCategoryCounts[m.id] ?? 0}',
+                                            theme.colorScheme.secondary,
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    Text(
-                                      'عدد الفئات: ${c.menuCategoryCounts[m.id] ?? 0}',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.outline,
-                                      ),
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 10),
                                 Row(
@@ -588,5 +620,90 @@ class MenusPage extends StatelessWidget {
             ),
           ),
     );
+  }
+
+  // Professional stats chip used inside each menu card
+  Widget _statChip(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    Color color, {
+    bool highlighted = false,
+    VoidCallback? onTap,
+  }) {
+    final theme = Theme.of(context);
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color:
+            highlighted
+                ? color.withOpacity(0.12)
+                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              highlighted
+                  ? color.withOpacity(0.4)
+                  : theme.colorScheme.outlineVariant.withOpacity(0.5),
+          width: highlighted ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (highlighted ? color : Colors.black).withOpacity(0.06),
+            blurRadius: highlighted ? 10 : 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                value,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: highlighted ? color : theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: chip,
+        ),
+      );
+    }
+    return chip;
   }
 }

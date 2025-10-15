@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:get/get.dart';
 import '../../../data/services/report_service.dart';
 import '../../../data/providers/local/sqlite_provider.dart';
 import '../../../data/repositories/branch_repository.dart';
-import '../../../data/repositories/category_repository.dart';
 import '../../../data/models/branch_model.dart';
-import '../../../data/models/category_model.dart';
 import '../../../core/services/export_service.dart';
+import '../controllers/reports_controller.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -16,16 +17,16 @@ class ReportsPage extends StatefulWidget {
 }
 
 class _ReportsPageState extends State<ReportsPage> {
+  final _c = Get.put(ReportsController());
   final _svc = ReportService();
   List<Map<String, dynamic>> _monthly = [];
   List<Map<String, dynamic>> _weekly = [];
   List<Map<String, dynamic>> _recent = [];
   List<BranchModel> _branches = [];
-  List<CategoryModel> _categories = [];
 
-  String? _selectedBranchId;
-  String? _selectedCategoryId;
-  String _period = 'month';
+  bool _loading = true;
+
+  // controller-based state replaces local fields for branch/period/chart
   DateTime? _customFrom;
   DateTime? _customTo;
 
@@ -35,31 +36,31 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadData();
     _largeChartKey = GlobalKey();
     _lineChartKey = GlobalKey();
-    _pieChartKey = GlobalKey();
+    // pie chart removed
   }
 
   late GlobalKey _largeChartKey;
   late GlobalKey _lineChartKey;
-  late GlobalKey _pieChartKey;
+  // late GlobalKey _pieChartKey; // removed
 
   Future<void> _loadData() async {
     try {
+      if (mounted) setState(() => _loading = true);
       final now = DateTime.now();
       final month = now.month;
       final year = now.year;
-      final branchId = _selectedBranchId;
-      final categoryId = _selectedCategoryId;
+      final branchId = _c.selectedBranchId.value;
 
       final monthly = await _svc.monthlyTotals(
         year: year,
         month: month,
         branchId: branchId,
-        categoryId: categoryId,
+        categoryId: null,
       );
       final weekly = await _svc.weeklyTotals(
         weeks: 8,
         branchId: branchId,
-        categoryId: categoryId,
+        categoryId: null,
       );
 
       final db = await SqliteProvider.database;
@@ -70,10 +71,6 @@ class _ReportsPageState extends State<ReportsPage> {
         whereParts.add('menus.branch_id = ?');
         args.add(branchId);
       }
-      if (categoryId != null) {
-        whereParts.add('items.category_id = ?');
-        args.add(categoryId);
-      }
 
       final where = whereParts.join(' AND ');
       final rows = await db.rawQuery(
@@ -82,9 +79,7 @@ class _ReportsPageState extends State<ReportsPage> {
       );
 
       final branchRepo = BranchRepository();
-      final catRepo = CategoryRepository();
       final branches = await branchRepo.getAll();
-      final categories = await catRepo.getAll();
 
       if (mounted) {
         setState(() {
@@ -92,7 +87,7 @@ class _ReportsPageState extends State<ReportsPage> {
           _weekly = weekly;
           _recent = rows;
           _branches = branches;
-          _categories = categories;
+          _loading = false;
         });
       }
     } catch (e, st) {
@@ -104,6 +99,7 @@ class _ReportsPageState extends State<ReportsPage> {
             backgroundColor: Colors.red,
           ),
         );
+        setState(() => _loading = false);
       }
     }
   }
@@ -115,19 +111,16 @@ class _ReportsPageState extends State<ReportsPage> {
     }
 
     try {
+      if (mounted) setState(() => _loading = true);
       final db = await SqliteProvider.database;
       final start = _customFrom!.millisecondsSinceEpoch;
       final end = _customTo!.millisecondsSinceEpoch;
       final args = <Object?>[start, end];
 
       var where = 'items.updated_at BETWEEN ? AND ? AND items.deleted = 0';
-      if (_selectedBranchId != null) {
+      if (_c.selectedBranchId.value != null) {
         where += ' AND menus.branch_id = ?';
-        args.add(_selectedBranchId);
-      }
-      if (_selectedCategoryId != null) {
-        where += ' AND items.category_id = ?';
-        args.add(_selectedCategoryId);
+        args.add(_c.selectedBranchId.value);
       }
 
       final rows = await db.rawQuery(
@@ -136,11 +129,61 @@ class _ReportsPageState extends State<ReportsPage> {
       );
 
       if (mounted) {
-        setState(() => _monthly = rows);
+        setState(() {
+          _monthly = rows;
+          _loading = false;
+        });
       }
     } catch (e) {
       debugPrint('Custom query error: $e');
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _pickDateRange() async {
+    final initial =
+        (_customFrom != null && _customTo != null)
+            ? DateTimeRange(start: _customFrom!, end: _customTo!)
+            : null;
+    final now = DateTime.now();
+    final res = await showDateRangePicker(
+      context: context,
+      locale: const Locale('ar'),
+      firstDate: DateTime(now.year - 3, 1, 1),
+      lastDate: DateTime(now.year + 3, 12, 31),
+      initialDateRange: initial,
+      helpText: 'اختر الفترة',
+      confirmText: 'تم',
+      cancelText: 'إلغاء',
+    );
+    if (res != null) {
+      setState(() {
+        _customFrom = DateTime(res.start.year, res.start.month, res.start.day);
+        _customTo = DateTime(
+          res.end.year,
+          res.end.month,
+          res.end.day,
+          23,
+          59,
+          59,
+        );
+      });
+    }
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _customFrom = null;
+      _customTo = null;
+      _c.reset();
+    });
+    _loadData();
+  }
+
+  String _fmtDate(DateTime d) {
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '${d.year}-$m-$day';
   }
 
   @override
@@ -194,6 +237,23 @@ class _ReportsPageState extends State<ReportsPage> {
       expandedHeight: 160,
       pinned: true,
       elevation: 0,
+      actions: [
+        IconButton(
+          onPressed: _exportPdf,
+          icon: const Icon(Icons.picture_as_pdf),
+          tooltip: 'تصدير PDF',
+        ),
+        IconButton(
+          onPressed: _exportExcel,
+          icon: const Icon(Icons.file_present),
+          tooltip: 'تصدير Excel',
+        ),
+        IconButton(
+          onPressed: _exportCsv,
+          icon: const Icon(Icons.table_chart),
+          tooltip: 'تصدير CSV',
+        ),
+      ],
       flexibleSpace: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -285,9 +345,63 @@ class _ReportsPageState extends State<ReportsPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _resetFilters,
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('إعادة الضبط'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
+            if (_c.period.value == 'custom') ...[
+              Text(
+                'الفترة المخصصة:',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _pickDateRange,
+                    icon: const Icon(Icons.date_range),
+                    label: const Text('اختيار المدى'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  if (_customFrom != null)
+                    Chip(
+                      avatar: const Icon(Icons.play_arrow, size: 18),
+                      label: Text('من: ${_fmtDate(_customFrom!)}'),
+                      deleteIcon: const Icon(Icons.close),
+                      onDeleted: () => setState(() => _customFrom = null),
+                    ),
+                  if (_customTo != null)
+                    Chip(
+                      avatar: const Icon(Icons.stop, size: 18),
+                      label: Text('إلى: ${_fmtDate(_customTo!)}'),
+                      deleteIcon: const Icon(Icons.close),
+                      onDeleted: () => setState(() => _customTo = null),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Branch filters
             if (_branches.isNotEmpty) ...[
@@ -306,10 +420,10 @@ class _ReportsPageState extends State<ReportsPage> {
                         .map(
                           (b) => FilterChip(
                             label: Text(b.name),
-                            selected: _selectedBranchId == b.id,
+                            selected: _c.selectedBranchId.value == b.id,
                             onSelected: (selected) {
                               setState(() {
-                                _selectedBranchId = selected ? b.id : null;
+                                _c.setBranch(selected ? b.id : null);
                                 _loadData();
                               });
                             },
@@ -322,40 +436,7 @@ class _ReportsPageState extends State<ReportsPage> {
               const SizedBox(height: 16),
             ],
 
-            // Category filters
-            if (_categories.isNotEmpty) ...[
-              Text(
-                'التصنيف:',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children:
-                    _categories
-                        .map(
-                          (c) => FilterChip(
-                            label: Text(c.name),
-                            selected: _selectedCategoryId == c.id,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedCategoryId = selected ? c.id : null;
-                                _loadData();
-                              });
-                            },
-                            selectedColor:
-                                Theme.of(
-                                  context,
-                                ).colorScheme.secondaryContainer,
-                          ),
-                        )
-                        .toList(),
-              ),
-              const SizedBox(height: 16),
-            ],
+            // Category filters removed
 
             // Period selection
             Text(
@@ -371,23 +452,23 @@ class _ReportsPageState extends State<ReportsPage> {
               children: [
                 ChoiceChip(
                   label: const Text('يومي'),
-                  selected: _period == 'day',
-                  onSelected: (s) => setState(() => _period = 'day'),
+                  selected: _c.period.value == 'day',
+                  onSelected: (s) => setState(() => _c.setPeriod('day')),
                 ),
                 ChoiceChip(
                   label: const Text('أسبوعي'),
-                  selected: _period == 'week',
-                  onSelected: (s) => setState(() => _period = 'week'),
+                  selected: _c.period.value == 'week',
+                  onSelected: (s) => setState(() => _c.setPeriod('week')),
                 ),
                 ChoiceChip(
                   label: const Text('شهري'),
-                  selected: _period == 'month',
-                  onSelected: (s) => setState(() => _period = 'month'),
+                  selected: _c.period.value == 'month',
+                  onSelected: (s) => setState(() => _c.setPeriod('month')),
                 ),
                 ChoiceChip(
                   label: const Text('مخصص'),
-                  selected: _period == 'custom',
-                  onSelected: (s) => setState(() => _period = 'custom'),
+                  selected: _c.period.value == 'custom',
+                  onSelected: (s) => setState(() => _c.setPeriod('custom')),
                 ),
               ],
             ),
@@ -398,7 +479,7 @@ class _ReportsPageState extends State<ReportsPage> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  if (_period == 'custom') {
+                  if (_c.period.value == 'custom') {
                     await _runCustom();
                   } else {
                     await _loadData();
@@ -432,6 +513,28 @@ class _ReportsPageState extends State<ReportsPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (_loading) {
+          if (constraints.maxWidth < 600) {
+            return Column(
+              children: const [
+                _ShimmerStatCard(),
+                SizedBox(height: 12),
+                _ShimmerStatCard(),
+                SizedBox(height: 12),
+                _ShimmerStatCard(),
+              ],
+            );
+          }
+          return Row(
+            children: const [
+              Expanded(child: _ShimmerStatCard()),
+              SizedBox(width: 12),
+              Expanded(child: _ShimmerStatCard()),
+              SizedBox(width: 12),
+              Expanded(child: _ShimmerStatCard()),
+            ],
+          );
+        }
         if (constraints.maxWidth < 600) {
           return Column(
             children: [
@@ -520,53 +623,80 @@ class _ReportsPageState extends State<ReportsPage> {
                     ),
                   ],
                 ),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.fullscreen),
-                  tooltip: 'عرض كامل',
+                Row(
+                  children: [
+                    ToggleButtons(
+                      isSelected: [
+                        _c.chartMode.value == 'month',
+                        _c.chartMode.value == 'week',
+                      ],
+                      onPressed: (index) {
+                        setState(() {
+                          _c.setChartMode(index == 0 ? 'month' : 'week');
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      constraints: const BoxConstraints(
+                        minHeight: 36,
+                        minWidth: 64,
+                      ),
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('شهري'),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('أسبوعي'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(Icons.fullscreen),
+                      tooltip: 'عرض كامل',
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Main bar chart
-            Container(
-              height: 280,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            // Main bar chart or shimmer
+            if (_loading)
+              const _ShimmerChart(height: 280)
+            else
+              Container(
+                height: 280,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withOpacity(0.2),
+                  ),
+                ),
+                child: RepaintBoundary(
+                  key: _largeChartKey,
+                  child: _LargeBarChart(
+                    monthly: _monthly,
+                    weekly: _weekly,
+                    mode: _c.chartMode.value,
+                  ),
                 ),
               ),
-              child: RepaintBoundary(
-                key: _largeChartKey,
-                child: _LargeBarChart(monthly: _monthly, weekly: _weekly),
-              ),
-            ),
             const SizedBox(height: 16),
 
             // Secondary charts
             LayoutBuilder(
               builder: (context, constraints) {
-                if (constraints.maxWidth < 700) {
-                  return Column(
-                    children: [
-                      _buildLineChart(context),
-                      const SizedBox(height: 12),
-                      _buildPieChart(context),
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    Expanded(child: _buildLineChart(context)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildPieChart(context)),
-                  ],
-                );
+                // After removing categories, show only the line chart
+                return _loading
+                    ? const _ShimmerChart(height: 180)
+                    : _buildLineChart(context);
               },
             ),
           ],
@@ -598,40 +728,10 @@ class _ReportsPageState extends State<ReportsPage> {
           Expanded(
             child: RepaintBoundary(
               key: _lineChartKey,
-              child: _LineTrendChart(monthly: _monthly),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPieChart(BuildContext context) {
-    return Container(
-      height: 180,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'توزيع التصنيفات',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: RepaintBoundary(
-              key: _pieChartKey,
-              child: _CategoryPieChart(
-                categories: _categories,
-                recent: _recent,
+              child: _LineTrendChart(
+                monthly: _monthly,
+                weekly: _weekly,
+                mode: _c.chartMode.value,
               ),
             ),
           ),
@@ -665,7 +765,9 @@ class _ReportsPageState extends State<ReportsPage> {
               ],
             ),
             const SizedBox(height: 16),
-            if (_recent.isEmpty)
+            if (_loading)
+              const _ShimmerList(count: 6)
+            else if (_recent.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(32),
@@ -791,16 +893,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _exportCsv() async {
     await _confirmThenExport(
-      () async {
-        final db = await SqliteProvider.database;
-        final rows = await db.rawQuery(
-          'SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC',
-        );
-        return await ExportService.createCsvReport(
-          rows: rows.cast<Map<String, dynamic>>(),
-          filenamePrefix: 'purchases',
-        );
-      },
+      () => _c.generateCsvRecent(prefix: 'purchases'),
       confirmTitle: 'تصدير CSV',
       subject: 'تقرير المشتريات (CSV)',
       progressLabel: 'جارٍ إعداد ملف CSV...',
@@ -809,11 +902,11 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _exportPdf() async {
     await _confirmThenExport(
-      () => ExportService.createPdfReport(
+      () => _c.generatePdf(
         monthly: _monthly,
         weekly: _weekly,
         recent: _recent,
-        filters: {'branch': _selectedBranchId, 'category': _selectedCategoryId},
+        filters: {'branch': _c.selectedBranchId.value},
       ),
       confirmTitle: 'تصدير PDF',
       subject: 'تقرير المشتريات (PDF)',
@@ -823,15 +916,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _exportExcel() async {
     await _confirmThenExport(
-      () async {
-        final db = await SqliteProvider.database;
-        final rows = await db.rawQuery(
-          'SELECT items.*, menus.branch_id FROM items JOIN menus ON menus.id = items.menu_id WHERE items.deleted = 0 ORDER BY items.updated_at DESC',
-        );
-        return await ExportService.createExcelReport(
-          rows: rows.cast<Map<String, dynamic>>(),
-        );
-      },
+      () => _c.generateExcelRecent(),
       confirmTitle: 'تصدير Excel',
       subject: 'تقرير المشتريات (Excel)',
       progressLabel: 'جارٍ إنشاء ملف Excel...',
@@ -918,6 +1003,102 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 }
 
+// Shimmer placeholders
+class _ShimmerStatCard extends StatelessWidget {
+  const _ShimmerStatCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          height: 120,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: Colors.grey.shade300,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShimmerChart extends StatelessWidget {
+  final double height;
+  const _ShimmerChart({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Container(
+        height: height,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShimmerList extends StatelessWidget {
+  final int count;
+  const _ShimmerList({this.count = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        count,
+        (i) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 12,
+                        width: double.infinity,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(height: 10, width: 120, color: Colors.white),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(height: 12, width: 60, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // Stat card widget
 class _StatCard extends StatelessWidget {
   final String title;
@@ -989,12 +1170,18 @@ class _StatCard extends StatelessWidget {
 class _LargeBarChart extends StatelessWidget {
   final List<Map<String, dynamic>> monthly;
   final List<Map<String, dynamic>> weekly;
+  final String mode; // 'month' or 'week'
 
-  const _LargeBarChart({required this.monthly, required this.weekly});
+  const _LargeBarChart({
+    required this.monthly,
+    required this.weekly,
+    required this.mode,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final data = monthly.map((e) => (e['total'] ?? 0) as num).toList();
+    final source = mode == 'week' ? weekly : monthly;
+    final data = source.map((e) => (e['total'] ?? 0) as num).toList();
 
     if (data.isEmpty) {
       return const Center(child: Text('لا توجد بيانات للعرض'));
@@ -1076,15 +1263,22 @@ class _LargeBarChart extends StatelessWidget {
 
 class _LineTrendChart extends StatelessWidget {
   final List<Map<String, dynamic>> monthly;
+  final List<Map<String, dynamic>> weekly;
+  final String mode; // 'month' or 'week'
 
-  const _LineTrendChart({required this.monthly});
+  const _LineTrendChart({
+    required this.monthly,
+    required this.weekly,
+    required this.mode,
+  });
 
   @override
   Widget build(BuildContext context) {
     final spots = <FlSpot>[];
 
-    for (var i = 0; i < monthly.length; i++) {
-      final val = (monthly[i]['total'] ?? 0) as num;
+    final source = mode == 'week' ? weekly : monthly;
+    for (var i = 0; i < source.length; i++) {
+      final val = (source[i]['total'] ?? 0) as num;
       spots.add(FlSpot(i.toDouble(), val.toDouble()));
     }
 
@@ -1128,66 +1322,4 @@ class _LineTrendChart extends StatelessWidget {
   }
 }
 
-class _CategoryPieChart extends StatelessWidget {
-  final List<CategoryModel> categories;
-  final List<Map<String, dynamic>> recent;
-
-  const _CategoryPieChart({required this.categories, required this.recent});
-
-  @override
-  Widget build(BuildContext context) {
-    final Map<String, double> totals = {};
-
-    for (var r in recent) {
-      final cid = (r['category_id'] ?? 'غير محدد').toString();
-      final tot = ((r['total'] ?? 0) as num).toDouble();
-      totals[cid] = (totals[cid] ?? 0) + tot;
-    }
-
-    if (totals.isEmpty) {
-      return const Center(child: Text('لا توجد بيانات'));
-    }
-
-    final sections = <PieChartSectionData>[];
-    final palette = [
-      Colors.blue,
-      Colors.orange,
-      Colors.green,
-      Colors.purple,
-      Colors.red,
-      Colors.teal,
-      Colors.amber,
-      Colors.cyan,
-    ];
-
-    var i = 0;
-    totals.forEach((cid, value) {
-      final label =
-          categories
-              .firstWhere(
-                (c) => c.id == cid,
-                orElse: () => CategoryModel(id: cid, name: cid),
-              )
-              .name;
-
-      sections.add(
-        PieChartSectionData(
-          color: palette[i % palette.length],
-          value: value,
-          title: '${label}\n${value.toStringAsFixed(0)}',
-          radius: 50,
-          titleStyle: const TextStyle(
-            fontSize: 11,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-      i++;
-    });
-
-    return PieChart(
-      PieChartData(sections: sections, centerSpaceRadius: 20, sectionsSpace: 3),
-    );
-  }
-}
+// Category pie chart removed

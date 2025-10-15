@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controllers/menu_items_controller.dart';
 import '../../../data/models/item_model.dart';
@@ -31,6 +30,19 @@ class MenuItemsPage extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           actions: [
+            // Quick expenses editor
+            IconButton(
+              tooltip: 'مصروفات',
+              onPressed: () => _showExpensesDialog(context, c),
+              style: IconButton.styleFrom(
+                backgroundColor: theme.colorScheme.tertiaryContainer,
+                foregroundColor: theme.colorScheme.onTertiaryContainer,
+                minimumSize: const Size(36, 36),
+                padding: const EdgeInsets.all(6),
+              ),
+              icon: const Icon(Icons.receipt_long_rounded, size: 18),
+            ),
+            const SizedBox(width: 8),
             // Export menu with modern dropdown
             PopupMenuButton<String>(
               icon: Container(
@@ -86,28 +98,24 @@ class MenuItemsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Bulk add button
+              // Bulk add (smaller)
               FloatingActionButton.extended(
                 heroTag: 'bulk',
+                tooltip: 'إدخال سريع',
                 onPressed: () => Get.to(() => const MenuItemsBulkPage()),
                 backgroundColor: theme.colorScheme.secondaryContainer,
                 foregroundColor: theme.colorScheme.onSecondaryContainer,
-                icon: const Icon(Icons.playlist_add_rounded),
-                label: const Text(
-                  'إدخال سريع',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
+                icon: const Icon(Icons.playlist_add_rounded, size: 18),
+                label: const Text('إدخال سريع'),
               ),
               const SizedBox(height: 12),
-              // Add single item button
+              // Add single item (smaller)
               FloatingActionButton.extended(
                 heroTag: 'add',
+                tooltip: 'إضافة عنصر',
                 onPressed: () => _showModernItemDialog(context, c, null),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text(
-                  'إضافة عنصر',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('إضافة عنصر'),
               ),
             ],
           );
@@ -184,52 +192,74 @@ class MenuItemsPage extends StatelessWidget {
             0,
             (sum, item) => sum + (item.qty * item.unitPrice),
           );
+          final stationery = c.menu.value?.stationeryExpenses ?? 0;
+          final transport = c.menu.value?.transportationExpenses ?? 0;
+          final expensesTotal = stationery + transport;
 
           return Column(
             children: [
-              // Summary card
+              // Summary cards - single horizontal row
               Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.colorScheme.primaryContainer,
-                      theme.colorScheme.secondaryContainer,
-                    ],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
+                height: 60,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Builder(
+                    builder: (ctx) {
+                      final grandTotal = totalAmount + expensesTotal;
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          children: [
+                            // Put expenses first (like menus page)
+                            _statChip(
+                              context,
+                              Icons.edit_note_rounded,
+                              'قرطاسية',
+                              '${stationery.toStringAsFixed(2)} ر.س',
+                              Colors.purple,
+                              onTap: () => _showExpensesDialog(context, c),
+                            ),
+                            const SizedBox(width: 8),
+                            _statChip(
+                              context,
+                              Icons.local_shipping_rounded,
+                              'نقل',
+                              '${transport.toStringAsFixed(2)} ر.س',
+                              Colors.orange,
+                              onTap: () => _showExpensesDialog(context, c),
+                            ),
+                            const SizedBox(width: 8),
+                            _statChip(
+                              context,
+                              Icons.payments_rounded,
+                              'إجمالي العناصر',
+                              '${totalAmount.toStringAsFixed(2)} ر.س',
+                              theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            _statChip(
+                              context,
+                              Icons.account_balance_wallet_rounded,
+                              'الإجمالي الكلي',
+                              '${grandTotal.toStringAsFixed(2)} ر.س',
+                              Colors.green,
+                              highlighted: true,
+                            ),
+                            const SizedBox(width: 8),
+                            _statChip(
+                              context,
+                              Icons.inventory_2_rounded,
+                              'العناصر',
+                              '${c.items.length}',
+                              theme.colorScheme.secondary,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildSummaryItem(
-                      context,
-                      Icons.inventory_2_rounded,
-                      'العناصر',
-                      '${c.items.length}',
-                    ),
-                    Container(
-                      width: 1,
-                      height: 40,
-                      color: theme.colorScheme.outline.withOpacity(0.3),
-                    ),
-                    _buildSummaryItem(
-                      context,
-                      Icons.payments_rounded,
-                      'الإجمالي',
-                      '${totalAmount.toStringAsFixed(2)} ر.س',
-                    ),
-                  ],
                 ),
               ),
 
@@ -250,33 +280,89 @@ class MenuItemsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryItem(
+  // Professional stats chip (shared style with menus page)
+  Widget _statChip(
     BuildContext context,
     IconData icon,
     String label,
     String value,
-  ) {
+    Color color, {
+    bool highlighted = false,
+    VoidCallback? onTap,
+  }) {
     final theme = Theme.of(context);
-    return Column(
-      children: [
-        Icon(icon, color: theme.colorScheme.onPrimaryContainer, size: 28),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
-          ),
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color:
+            highlighted
+                ? color.withOpacity(0.12)
+                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              highlighted
+                  ? color.withOpacity(0.4)
+                  : theme.colorScheme.outlineVariant.withOpacity(0.5),
+          width: highlighted ? 1.5 : 1,
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onPrimaryContainer,
+        boxShadow: [
+          BoxShadow(
+            color: (highlighted ? color : Colors.black).withOpacity(0.06),
+            blurRadius: highlighted ? 10 : 6,
+            offset: const Offset(0, 2),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                value,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: highlighted ? color : theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: chip,
+        ),
+      );
+    }
+    return chip;
   }
 
   Widget _buildModernItemCard(
@@ -286,208 +372,166 @@ class MenuItemsPage extends StatelessWidget {
     int index,
   ) {
     final theme = Theme.of(context);
-    final cat = c.categories.firstWhereOrNull((x) => x.id == item.categoryId);
+    final cat = _findCategoryById(c.categories, item.categoryId);
     final total = item.qty * item.unitPrice;
     final icon = _getCategoryIcon(cat);
     final color = _getCategoryColor(cat, theme);
 
-    return Dismissible(
-      key: Key(item.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+          width: 1,
         ),
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Icon(
-          Icons.delete_rounded,
-          color: theme.colorScheme.onErrorContainer,
-          size: 28,
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      confirmDismiss: (direction) async {
-        return await Get.dialog<bool>(
-          AlertDialog(
-            title: const Text('تأكيد الحذف'),
-            content: const Text('هل تريد حذف هذا العنصر؟'),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () => Get.back(result: true),
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.error,
-                ),
-                child: const Text('حذف'),
-              ),
-            ],
-          ),
-        );
-      },
-      onDismissed: (direction) => c.delete(item.id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () => _showModernItemDialog(context, c, item),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  // Category icon
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: color, size: 28),
+          onTap: () => _showModernItemDialog(context, c, item),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Category icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(width: 16),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                const SizedBox(width: 16),
 
-                  // Details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          cat?.name ?? 'عنصر',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            _buildInfoChip(
-                              context,
-                              Icons.shopping_cart_outlined,
-                              '${item.qty}',
-                            ),
-                            const SizedBox(width: 8),
-                            _buildInfoChip(
-                              context,
-                              Icons.attach_money,
-                              '${item.unitPrice.toStringAsFixed(2)} ر.س',
-                            ),
-                          ],
-                        ),
-                        if (item.notes?.isNotEmpty ?? false) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            item.notes!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontStyle: FontStyle.italic,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  // Total and actions
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${total.toStringAsFixed(2)} ر.س',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
+                      Text(
+                        cat?.name ?? 'عنصر',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed:
-                                () => _showModernItemDialog(context, c, item),
-                            tooltip: 'تعديل',
-                            style: IconButton.styleFrom(
-                              backgroundColor:
-                                  theme.colorScheme.surfaceContainerHighest,
-                              foregroundColor: theme.colorScheme.primary,
-                            ),
+                          _buildInfoChip(
+                            context,
+                            Icons.shopping_cart_outlined,
+                            '${item.qty}',
                           ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            onPressed: () async {
-                              final confirm = await Get.dialog<bool>(
-                                AlertDialog(
-                                  title: const Text('تأكيد الحذف'),
-                                  content: const Text(
-                                    'هل تريد حذف هذا العنصر؟',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Get.back(result: false),
-                                      child: const Text('إلغاء'),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () => Get.back(result: true),
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor:
-                                            theme.colorScheme.error,
-                                      ),
-                                      child: const Text('حذف'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true) c.delete(item.id);
-                            },
-                            tooltip: 'حذف',
-                            style: IconButton.styleFrom(
-                              backgroundColor: theme.colorScheme.errorContainer
-                                  .withOpacity(0.5),
-                              foregroundColor: theme.colorScheme.error,
-                            ),
+                          _buildInfoChip(
+                            context,
+                            Icons.attach_money,
+                            '${item.unitPrice.toStringAsFixed(2)} ر.س',
                           ),
                         ],
                       ),
+                      if (item.notes?.isNotEmpty ?? false) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          item.notes!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
-                ],
-              ),
+                ),
+
+                // Total and actions
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${total.toStringAsFixed(2)} ر.س',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          onPressed:
+                              () => _showModernItemDialog(context, c, item),
+                          tooltip: 'تعديل',
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            foregroundColor: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          onPressed: () async {
+                            final confirm = await Get.dialog<bool>(
+                              AlertDialog(
+                                title: const Text('تأكيد الحذف'),
+                                content: const Text('هل تريد حذف هذا العنصر؟'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Get.back(result: false),
+                                    child: const Text('إلغاء'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Get.back(result: true),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: theme.colorScheme.error,
+                                    ),
+                                    child: const Text('حذف'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) c.delete(item.id);
+                          },
+                          tooltip: 'حذف',
+                          style: IconButton.styleFrom(
+                            backgroundColor: theme.colorScheme.errorContainer
+                                .withOpacity(0.5),
+                            foregroundColor: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -638,9 +682,7 @@ class MenuItemsPage extends StatelessWidget {
 
       final rows =
           c.items.map((it) {
-            final cat = c.categories.firstWhereOrNull(
-              (x) => x.id == it.categoryId,
-            );
+            final cat = _findCategoryById(c.categories, it.categoryId);
             return {
               'الفئة': cat?.name ?? '',
               'الكمية': it.qty,
@@ -723,9 +765,7 @@ class MenuItemsPage extends StatelessWidget {
 
       final arabicRows =
           c.items.map((it) {
-            final cat = c.categories.firstWhereOrNull(
-              (x) => x.id == it.categoryId,
-            );
+            final cat = _findCategoryById(c.categories, it.categoryId);
             return {
               'الفئة': cat?.name ?? '',
               'الكمية': it.qty,
@@ -783,9 +823,9 @@ class MenuItemsPage extends StatelessWidget {
           (sheetContext) => StatefulBuilder(
             builder: (ctx, setState) {
               final theme = Theme.of(context);
-              final quantity = int.tryParse(qty.text) ?? 0;
-              final unitPrice = double.tryParse(price.text) ?? 0;
-              final total = quantity * unitPrice;
+              final total =
+                  (double.tryParse(qty.text) ?? 0) *
+                  (double.tryParse(price.text) ?? 0);
 
               return Container(
                 decoration: BoxDecoration(
@@ -858,8 +898,9 @@ class MenuItemsPage extends StatelessWidget {
                             prefixIcon: Icon(
                               selectedCatId != null
                                   ? _getCategoryIcon(
-                                    c.categories.firstWhereOrNull(
-                                      (cat) => cat.id == selectedCatId,
+                                    _findCategoryById(
+                                      c.categories,
+                                      selectedCatId,
                                     ),
                                   )
                                   : Icons.category_outlined,
@@ -905,9 +946,6 @@ class MenuItemsPage extends StatelessWidget {
                               child: TextFormField(
                                 controller: qty,
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
                                 decoration: InputDecoration(
                                   labelText: 'الكمية',
                                   prefixIcon: const Icon(
@@ -919,7 +957,7 @@ class MenuItemsPage extends StatelessWidget {
                                   filled: true,
                                 ),
                                 validator: (v) {
-                                  final q = int.tryParse(v ?? '0') ?? 0;
+                                  final q = double.tryParse(v ?? '0') ?? 0;
                                   if (q <= 0) {
                                     return 'الكمية يجب أن تكون أكبر من صفر';
                                   }
@@ -1031,16 +1069,16 @@ class MenuItemsPage extends StatelessWidget {
                                       false)) {
                                     return;
                                   }
-                                  final q = int.tryParse(qty.text) ?? 0;
+                                  final qVal = double.tryParse(qty.text) ?? 0;
                                   final p = double.tryParse(price.text) ?? 0;
 
                                   final newItem = ItemModel(
                                     id: item?.id ?? '',
                                     menuId: c.menuId,
                                     categoryId: selectedCatId,
-                                    qty: q,
+                                    qty: qVal.toInt(),
                                     unitPrice: p,
-                                    total: q * p,
+                                    total: qVal * p,
                                     notes:
                                         notes.text.isEmpty ? null : notes.text,
                                     updatedAt:
@@ -1081,5 +1119,246 @@ class MenuItemsPage extends StatelessWidget {
             },
           ),
     );
+  }
+
+  // ---- Expenses dialog ----
+  void _showExpensesDialog(BuildContext context, MenuItemsController c) {
+    final theme = Theme.of(context);
+    final currentStationery =
+        (c.menu.value?.stationeryExpenses ?? 0).toString();
+    final currentTransport =
+        (c.menu.value?.transportationExpenses ?? 0).toString();
+    final stationeryCtrl = TextEditingController(text: currentStationery);
+    final transportCtrl = TextEditingController(text: currentTransport);
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (ctx) => Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.tertiaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.receipt_long_rounded,
+                                color: theme.colorScheme.onTertiaryContainer,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                'تعديل المصروفات',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        LayoutBuilder(
+                          builder: (ctx, cons) {
+                            final narrow = cons.maxWidth < 360;
+                            final fields = [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: stationeryCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: 'مصروفات القرطاسية',
+                                    prefixIcon: const Icon(
+                                      Icons.edit_note_rounded,
+                                    ),
+                                    suffixText: 'ر.س',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    filled: true,
+                                  ),
+                                  validator: (v) {
+                                    final n = double.tryParse((v ?? '').trim());
+                                    if (n == null || n < 0)
+                                      return 'أدخل قيمة صحيحة';
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: transportCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: 'مصروفات النقل',
+                                    prefixIcon: const Icon(
+                                      Icons.local_shipping_rounded,
+                                    ),
+                                    suffixText: 'ر.س',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    filled: true,
+                                  ),
+                                  validator: (v) {
+                                    final n = double.tryParse((v ?? '').trim());
+                                    if (n == null || n < 0)
+                                      return 'أدخل قيمة صحيحة';
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ];
+                            if (narrow) {
+                              return Column(
+                                children: [
+                                  fields[0],
+                                  const SizedBox(height: 12),
+                                  fields[2],
+                                ],
+                              );
+                            }
+                            return Row(children: fields);
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        Obx(() {
+                          final isSaving = c.isSavingExpenses.value;
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: isSaving ? null : () => Get.back(),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: const Text('إلغاء'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: FilledButton.icon(
+                                  onPressed:
+                                      isSaving
+                                          ? null
+                                          : () async {
+                                            if (!(formKey.currentState
+                                                    ?.validate() ??
+                                                false))
+                                              return;
+                                            final st =
+                                                double.tryParse(
+                                                  stationeryCtrl.text.trim(),
+                                                ) ??
+                                                0;
+                                            final tr =
+                                                double.tryParse(
+                                                  transportCtrl.text.trim(),
+                                                ) ??
+                                                0;
+                                            await c.updateExpenses(
+                                              stationery: st,
+                                              transportation: tr,
+                                            );
+                                            Get.back();
+                                            Get.snackbar(
+                                              'تم',
+                                              'تم تحديث المصروفات',
+                                              snackPosition:
+                                                  SnackPosition.BOTTOM,
+                                              backgroundColor:
+                                                  Colors.green[100],
+                                            );
+                                          },
+                                  icon:
+                                      isSaving
+                                          ? SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color:
+                                                  theme.colorScheme.onPrimary,
+                                            ),
+                                          )
+                                          : const Icon(Icons.save_rounded),
+                                  label: Text(
+                                    isSaving ? 'جاري الحفظ...' : 'حفظ',
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+    );
+  }
+
+  // Safe lookup without package:collection
+  CategoryModel? _findCategoryById(List<CategoryModel> list, String? id) {
+    if (id == null) return null;
+    for (final c in list) {
+      if (c.id == id) return c;
+    }
+    return null;
   }
 }

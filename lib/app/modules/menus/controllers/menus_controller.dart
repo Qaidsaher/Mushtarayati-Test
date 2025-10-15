@@ -10,7 +10,9 @@ class MenusController extends GetxController {
   final BranchRepository _branchRepo = BranchRepository();
 
   final menus = <MenuModel>[].obs;
-  final branches = <dynamic>[].obs; // branch models are simple maps or objects; repository returns appropriate models
+  final branches =
+      <dynamic>[]
+          .obs; // branch models are simple maps or objects; repository returns appropriate models
   final isLoading = false.obs;
   final selectedDate = DateTime.now().obs;
   final ItemRepository _itemRepo = ItemRepository();
@@ -54,8 +56,9 @@ class MenusController extends GetxController {
     // compute stats for menus
     for (final m in allMenus) {
       final items = await _itemRepo.listByMenu(m.id);
-  final total = items.fold<double>(0, (p, e) => p + (e.qty * e.unitPrice));
-      final distinctCats = items.map((e) => e.categoryId).where((x) => x != null).toSet().length;
+      final total = items.fold<double>(0, (p, e) => p + (e.qty * e.unitPrice));
+      final distinctCats =
+          items.map((e) => e.categoryId).where((x) => x != null).toSet().length;
       menuTotals[m.id] = total;
       menuCategoryCounts[m.id] = distinctCats;
     }
@@ -76,7 +79,15 @@ class MenusController extends GetxController {
       return;
     }
 
-  await _repo.createOrUpdate(MenuModel(id: '', name: 'قائمة $dateStr', date: dateStr, branchId: branchId, updatedAt: DateTime.now().millisecondsSinceEpoch));
+    await _repo.createOrUpdate(
+      MenuModel(
+        id: '',
+        name: 'قائمة $dateStr',
+        date: dateStr,
+        branchId: branchId,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
     await load();
   }
 
@@ -85,19 +96,51 @@ class MenusController extends GetxController {
     await load();
   }
 
+  /// Update stationery and transportation expenses for a single menu without full reload
+  Future<void> updateMenuExpenses(
+    String menuId, {
+    required double stationery,
+    required double transport,
+  }) async {
+    // Find current menu in memory
+    final idx = menus.indexWhere((m) => m.id == menuId);
+    if (idx == -1) return;
+    final current = menus[idx];
+
+    final updated = MenuModel(
+      id: current.id,
+      name: current.name,
+      date: current.date,
+      userId: current.userId,
+      branchId: current.branchId,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      deleted: current.deleted,
+      stationeryExpenses: stationery,
+      transportationExpenses: transport,
+    );
+
+    await _repo.createOrUpdate(updated);
+    menus[idx] = updated; // update local state to avoid extra queries
+  }
+
   /// Return rows suitable for exporting a specific menu
   Future<List<Map<String, dynamic>>> exportRowsForMenu(String menuId) async {
     final items = await _itemRepo.listByMenu(menuId);
-    return items.map((it) => {
-          'id': it.id,
-          'notes': it.notes ?? '',
-          'qty': it.qty,
-          'unit_price': it.unitPrice,
-          'total': it.qty * it.unitPrice,
-          'categoryId': it.categoryId ?? '',
-          'updated_at': it.updatedAt ?? 0,
-        }).toList();
+    return items
+        .map(
+          (it) => {
+            'id': it.id,
+            'notes': it.notes ?? '',
+            'qty': it.qty,
+            'unit_price': it.unitPrice,
+            'total': it.qty * it.unitPrice,
+            'categoryId': it.categoryId ?? '',
+            'updated_at': it.updatedAt ?? 0,
+          },
+        )
+        .toList();
   }
 
-  String _dateToStr(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  String _dateToStr(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

@@ -72,7 +72,7 @@ class ExcelExportServices {
         ..borders.all.lineStyle = thinBorder;
 
       // --- Column headers ---
-      const headers = ['اسم الصنف', 'الكمية', 'السعر', 'الإجمالي'];
+      const headers = ['اسم الفئة', 'الكمية', 'السعر', 'الإجمالي'];
       for (int j = 0; j < headers.length; j++) {
         final headerCell = sheet.getRangeByIndex(4, baseCol + j);
         headerCell.setText(headers[j]);
@@ -99,7 +99,7 @@ class ExcelExportServices {
 
         final rowIndex = i + 5; // data starts at row 5
         final rowData = [
-          it.notes ?? '', // اسم الصنف أو ملاحظة
+          cat?.name ?? 'غير محدد', // اسم الفئة
           it.qty.toString(),
           it.unitPrice.toStringAsFixed(2),
           lineTotal.toStringAsFixed(2),
@@ -118,8 +118,65 @@ class ExcelExportServices {
         }
       }
 
-      // --- Totals row ---
-      final totalRow = items.length + 5;
+      // --- Expenses rows (before total) ---
+      final double stationery = (menu.stationeryExpenses ?? 0).toDouble();
+      final double transport = (menu.transportationExpenses ?? 0).toDouble();
+      final expensesStartRow = items.length + 5;
+
+      // Stationery row (label in first column only)
+      final stationeryLabel = sheet.getRangeByIndex(expensesStartRow, baseCol);
+      stationeryLabel.setText('مصاريف القرطاسية');
+      stationeryLabel.cellStyle
+        ..bold = true
+        ..hAlign = HAlignType.center
+        ..vAlign = VAlignType.center
+        ..borders.all.lineStyle = thinBorder;
+      final stationeryValue = sheet.getRangeByIndex(
+        expensesStartRow,
+        baseCol + 3,
+      );
+      stationeryValue.setNumber(stationery);
+      stationeryValue.cellStyle
+        ..bold = true
+        ..hAlign = HAlignType.center
+        ..vAlign = VAlignType.center
+        ..borders.all.lineStyle = thinBorder;
+      // Ensure borders across the entire row
+      for (int c = 0; c < colsPerSection; c++) {
+        final cell = sheet.getRangeByIndex(expensesStartRow, baseCol + c);
+        cell.cellStyle
+          ..borders.all.lineStyle = thinBorder
+          ..hAlign = HAlignType.center
+          ..vAlign = VAlignType.center;
+      }
+
+      // Transportation row (label in first column only)
+      final transportRow = expensesStartRow + 1;
+      final transportLabel = sheet.getRangeByIndex(transportRow, baseCol);
+      transportLabel.setText('مصاريف النقل');
+      transportLabel.cellStyle
+        ..bold = true
+        ..hAlign = HAlignType.center
+        ..vAlign = VAlignType.center
+        ..borders.all.lineStyle = thinBorder;
+      final transportValue = sheet.getRangeByIndex(transportRow, baseCol + 3);
+      transportValue.setNumber(transport);
+      transportValue.cellStyle
+        ..bold = true
+        ..hAlign = HAlignType.center
+        ..vAlign = VAlignType.center
+        ..borders.all.lineStyle = thinBorder;
+      // Ensure borders across the entire row
+      for (int c = 0; c < colsPerSection; c++) {
+        final cell = sheet.getRangeByIndex(transportRow, baseCol + c);
+        cell.cellStyle
+          ..borders.all.lineStyle = thinBorder
+          ..hAlign = HAlignType.center
+          ..vAlign = VAlignType.center;
+      }
+
+      // --- Grand total row (items + expenses) ---
+      final totalRow = expensesStartRow + 2;
       sheet.getRangeByIndex(totalRow, baseCol, totalRow, baseCol + 2).merge();
       final totalLabel = sheet.getRangeByIndex(totalRow, baseCol);
       totalLabel.setText('الإجـــــــــــــمالـــــــــــي');
@@ -131,7 +188,7 @@ class ExcelExportServices {
         ..borders.all.lineStyle = thinBorder;
 
       final totalValue = sheet.getRangeByIndex(totalRow, baseCol + 3);
-      totalValue.setNumber(totalSum);
+      totalValue.setNumber(totalSum + stationery + transport);
       totalValue.cellStyle
         ..bold = true
         ..backColor = totalColor
@@ -184,7 +241,7 @@ class ExcelExportServices {
     // --- إنشاء ملف Excel ---
     final Workbook workbook = Workbook();
     final Worksheet sheet = workbook.worksheets[0];
-    sheet.name = menu.name ?? 'قائمة';
+    sheet.name = menu.name;
 
     // === ألوان التصميم كما في التقرير اليومي ===
     const bgColor = '#E8F5E9';
@@ -206,7 +263,7 @@ class ExcelExportServices {
       ..borders.all.lineStyle = thinBorder;
 
     // --- رؤوس الأعمدة ---
-    const headers = ['اسم الصنف', 'الكمية', 'السعر', 'الإجمالي', 'الملاحظات'];
+    const headers = ['اسم الفئة', 'الكمية', 'السعر', 'الإجمالي', 'الملاحظات'];
     for (int j = 0; j < headers.length; j++) {
       final headerCell = sheet.getRangeByIndex(3, j + 1);
       headerCell.setText(headers[j]);
@@ -234,7 +291,7 @@ class ExcelExportServices {
 
       final rowIndex = i + 4;
       final rowData = [
-        cat?.name ?? (cat?.name ?? 'غير محدد'),
+        cat?.name ?? 'غير محدد',
         it.qty.toString(),
         it.unitPrice.toStringAsFixed(2),
         lineTotal.toStringAsFixed(2),
@@ -254,8 +311,62 @@ class ExcelExportServices {
       }
     }
 
-    // --- صف الإجمالي ---
-    final totalRow = items.length + 5;
+    // --- صفوف المصاريف قبل الإجمالي ---
+    final double stationery = (menu.stationeryExpenses ?? 0).toDouble();
+    final double transport = (menu.transportationExpenses ?? 0).toDouble();
+    final expensesStartRow = items.length + 5;
+
+    // مصاريف القرطاسية (ضمن عمود اسم الفئة)
+    final stationeryLabel = sheet.getRangeByIndex(expensesStartRow, 1);
+    stationeryLabel.setText('مصاريف القرطاسية');
+    stationeryLabel.cellStyle
+      ..bold = true
+      ..hAlign = HAlignType.center
+      ..vAlign = VAlignType.center
+      ..borders.all.lineStyle = thinBorder;
+    final stationeryValue = sheet.getRangeByIndex(expensesStartRow, 4);
+    stationeryValue.setNumber(stationery);
+    stationeryValue.cellStyle
+      ..bold = true
+      ..hAlign = HAlignType.center
+      ..vAlign = VAlignType.center
+      ..borders.all.lineStyle = thinBorder;
+    // Ensure borders across the entire row
+    for (int c = 1; c <= 4; c++) {
+      final cell = sheet.getRangeByIndex(expensesStartRow, c);
+      cell.cellStyle
+        ..borders.all.lineStyle = thinBorder
+        ..hAlign = HAlignType.center
+        ..vAlign = VAlignType.center;
+    }
+
+    // مصاريف النقل (ضمن عمود اسم الفئة)
+    final transportRow = expensesStartRow + 1;
+    final transportLabel = sheet.getRangeByIndex(transportRow, 1);
+    transportLabel.setText('مصاريف النقل');
+    transportLabel.cellStyle
+      ..bold = true
+      ..hAlign = HAlignType.center
+      ..vAlign = VAlignType.center
+      ..borders.all.lineStyle = thinBorder;
+    final transportValue = sheet.getRangeByIndex(transportRow, 4);
+    transportValue.setNumber(transport);
+    transportValue.cellStyle
+      ..bold = true
+      ..hAlign = HAlignType.center
+      ..vAlign = VAlignType.center
+      ..borders.all.lineStyle = thinBorder;
+    // Ensure borders across the entire row
+    for (int c = 1; c <= 4; c++) {
+      final cell = sheet.getRangeByIndex(transportRow, c);
+      cell.cellStyle
+        ..borders.all.lineStyle = thinBorder
+        ..hAlign = HAlignType.center
+        ..vAlign = VAlignType.center;
+    }
+
+    // --- صف الإجمالي (العناصر + المصاريف) ---
+    final totalRow = expensesStartRow + 2;
     sheet.getRangeByIndex(totalRow, 1, totalRow, 3).merge();
     final totalLabel = sheet.getRangeByIndex(totalRow, 1);
     totalLabel.setText('الإجـــــــــــــمالـــــــــــي');
@@ -267,7 +378,7 @@ class ExcelExportServices {
       ..borders.all.lineStyle = thinBorder;
 
     final totalValue = sheet.getRangeByIndex(totalRow, 4);
-    totalValue.setNumber(totalSum);
+    totalValue.setNumber(totalSum + stationery + transport);
     totalValue.cellStyle
       ..bold = true
       ..backColor = totalColor
@@ -298,7 +409,6 @@ class ExcelExportServices {
   }) async {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
-    final catRepo = CategoryRepository();
 
     // === تحديد نطاق الأيام بناءً على النوع ===
     DateTime endDate;
@@ -308,7 +418,6 @@ class ExcelExportServices {
       endDate = DateTime(startDate.year, startDate.month + 1, 0);
     }
 
-    final cats = await catRepo.getAll();
     final Workbook workbook = Workbook();
 
     // === ألوان ثابتة ===
@@ -317,6 +426,11 @@ class ExcelExportServices {
     const headerColor = '#FFD966';
     const totalColor = '#FFF59D';
     final thinBorder = LineStyle.thin;
+
+    // جلب أسماء الفئات لاستخدامها في أوراق الفترة
+    final catRepo = CategoryRepository();
+    final cats = await catRepo.getAll();
+    final Map<String, String> catNames = {for (final c in cats) c.id: c.name};
 
     if (reportType == "sheets") {
       // === لكل يوم ورقة منفصلة ===
@@ -328,8 +442,8 @@ class ExcelExportServices {
         final dateStr =
             '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
         final menus = await menuRepo.list(date: dateStr);
-
         if (menus.isEmpty) continue;
+
         final sheet = workbook.worksheets.addWithName('يوم ${d.day}');
         const colsPerSection = 4;
         const dividerWidth = 1;
@@ -368,7 +482,7 @@ class ExcelExportServices {
             ..cellStyle.borders.all.lineStyle = thinBorder;
 
           // رؤوس الأعمدة
-          const headers = ['اسم الصنف', 'الكمية', 'السعر', 'الإجمالي'];
+          const headers = ['اسم الفئة', 'الكمية', 'السعر', 'الإجمالي'];
           for (int j = 0; j < headers.length; j++) {
             final headerCell = sheet.getRangeByIndex(4, baseCol + j);
             headerCell
@@ -389,7 +503,7 @@ class ExcelExportServices {
 
             final rowIndex = i + 5;
             final rowData = [
-              it.notes ?? '',
+              catNames[it.categoryId ?? ''] ?? 'غير محدد',
               it.qty.toString(),
               it.unitPrice.toStringAsFixed(2),
               lineTotal.toStringAsFixed(2),
@@ -407,7 +521,72 @@ class ExcelExportServices {
             }
           }
 
-          final totalRow = items.length + 5;
+          // مصاريف قبل الإجمالي
+          final double stationery = (menu.stationeryExpenses ?? 0).toDouble();
+          final double transport =
+              (menu.transportationExpenses ?? 0).toDouble();
+          final expensesStartRow = items.length + 5;
+
+          // مصاريف القرطاسية (ضمن عمود اسم الفئة)
+          final stationeryLabel = sheet.getRangeByIndex(
+            expensesStartRow,
+            baseCol,
+          );
+          stationeryLabel
+            ..setText('مصاريف القرطاسية')
+            ..cellStyle.bold = true
+            ..cellStyle.hAlign = HAlignType.center
+            ..cellStyle.vAlign = VAlignType.center
+            ..cellStyle.borders.all.lineStyle = thinBorder;
+          final stationeryValue = sheet.getRangeByIndex(
+            expensesStartRow,
+            baseCol + 3,
+          );
+          stationeryValue
+            ..setNumber(stationery)
+            ..cellStyle.bold = true
+            ..cellStyle.hAlign = HAlignType.center
+            ..cellStyle.vAlign = VAlignType.center
+            ..cellStyle.borders.all.lineStyle = thinBorder;
+          // Ensure borders across the entire row
+          for (int c = 0; c < colsPerSection; c++) {
+            final cell = sheet.getRangeByIndex(expensesStartRow, baseCol + c);
+            cell.cellStyle
+              ..borders.all.lineStyle = thinBorder
+              ..hAlign = HAlignType.center
+              ..vAlign = VAlignType.center;
+          }
+
+          // مصاريف النقل (ضمن عمود اسم الفئة)
+          final transportRow = expensesStartRow + 1;
+          final transportLabel = sheet.getRangeByIndex(transportRow, baseCol);
+          transportLabel
+            ..setText('مصاريف النقل')
+            ..cellStyle.bold = true
+            ..cellStyle.hAlign = HAlignType.center
+            ..cellStyle.vAlign = VAlignType.center
+            ..cellStyle.borders.all.lineStyle = thinBorder;
+          final transportValue = sheet.getRangeByIndex(
+            transportRow,
+            baseCol + 3,
+          );
+          transportValue
+            ..setNumber(transport)
+            ..cellStyle.bold = true
+            ..cellStyle.hAlign = HAlignType.center
+            ..cellStyle.vAlign = VAlignType.center
+            ..cellStyle.borders.all.lineStyle = thinBorder;
+          // Ensure borders across the entire row
+          for (int c = 0; c < colsPerSection; c++) {
+            final cell = sheet.getRangeByIndex(transportRow, baseCol + c);
+            cell.cellStyle
+              ..borders.all.lineStyle = thinBorder
+              ..hAlign = HAlignType.center
+              ..vAlign = VAlignType.center;
+          }
+
+          // الإجمالي النهائي (العناصر + المصاريف)
+          final totalRow = expensesStartRow + 2;
           sheet
               .getRangeByIndex(totalRow, baseCol, totalRow, baseCol + 2)
               .merge();
@@ -422,7 +601,7 @@ class ExcelExportServices {
 
           final totalValue = sheet.getRangeByIndex(totalRow, baseCol + 3);
           totalValue
-            ..setNumber(totalSum)
+            ..setNumber(totalSum + stationery + transport)
             ..cellStyle.bold = true
             ..cellStyle.backColor = totalColor
             ..cellStyle.hAlign = HAlignType.center
@@ -456,9 +635,14 @@ class ExcelExportServices {
             (sum, it) =>
                 sum + (it.total != 0 ? it.total : it.qty * it.unitPrice),
           );
+          final double stationery = (menu.stationeryExpenses ?? 0).toDouble();
+          final double transport =
+              (menu.transportationExpenses ?? 0).toDouble();
           sheet.getRangeByIndex(row, 1).setText('اليوم ${d.day}');
           sheet.getRangeByIndex(row, 2).setText(menu.name);
-          sheet.getRangeByIndex(row, 3).setNumber(total);
+          sheet
+              .getRangeByIndex(row, 3)
+              .setNumber(total + stationery + transport);
           sheet.getRangeByIndex(row, 4).setNumber(items.length.toDouble());
           sheet.getRangeByIndex(row, 5).setText(dateStr);
           row++;

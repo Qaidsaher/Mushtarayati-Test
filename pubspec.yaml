@@ -37,6 +37,7 @@ dependencies:
   excel: ^2.1.0
   fl_chart: ^0.65.0
   syncfusion_flutter_xlsio: ^28.1.33
+  shimmer: ^3.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -47,6 +48,8 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/logo1.png
+    - assets/fonts/NotoNaskhArabic-Regular.ttf
+    - assets/fonts/NotoNaskhArabic-Bold.ttf
   # Optional: add an Arabic font (e.g. NotoNaskhArabic) to improve PDF Arabic rendering.
   # Create folder assets/fonts/ and place TTF files there, then uncomment and edit the section below.
   fonts:
