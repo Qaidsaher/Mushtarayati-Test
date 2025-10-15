@@ -24,6 +24,8 @@ class Migrations {
     date TEXT,
     user_id TEXT,
     branch_id TEXT,
+    stationery_expenses REAL,
+    transportation_expenses REAL,
     updated_at INTEGER,
     deleted INTEGER DEFAULT 0
   );
@@ -49,5 +51,10 @@ class Migrations {
     updated_at INTEGER,
     synced INTEGER DEFAULT 0
   );
+  ''';
+
+  static const v2 = '''
+  ALTER TABLE menus ADD COLUMN stationery_expenses REAL;
+  ALTER TABLE menus ADD COLUMN transportation_expenses REAL;
   ''';
 }

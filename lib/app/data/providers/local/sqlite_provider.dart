@@ -11,7 +11,7 @@ class SqliteProvider {
     final path = join(await getDatabasesPath(), 'saher.db');
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, v) async {
         // run migrations v1
         final batch = db.batch();
@@ -34,6 +34,17 @@ class SqliteProvider {
 
         await Seeders.seedCategories(db);
         print('🌱 تمت تعبئة جدول التصنيفات بنجاح عبر Seeder');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          final stmts = Migrations.v2.split(';');
+          for (var s in stmts) {
+            final sql = s.trim();
+            if (sql.isNotEmpty) {
+              await db.execute(sql);
+            }
+          }
+        }
       },
     );
     return _db!;
