@@ -38,7 +38,7 @@ class CategoriesPage extends StatelessWidget {
           children: [
             // Filter Chips Section
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 boxShadow: [
@@ -134,7 +134,7 @@ class CategoriesPage extends StatelessWidget {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   itemCount: filteredCategories.length,
                   itemBuilder: (context, i) {
                     final cat = filteredCategories[i];

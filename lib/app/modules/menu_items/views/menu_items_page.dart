@@ -4,6 +4,7 @@ import '../controllers/menu_items_controller.dart';
 import '../../../data/models/item_model.dart';
 import 'menu_items_bulk_page.dart';
 import '../../../core/services/export_service.dart';
+import '../../../core/widgets/responsive_wrapper.dart';
 import '../../../data/models/category_model.dart';
 
 class MenuItemsPage extends StatelessWidget {
@@ -120,162 +121,163 @@ class MenuItemsPage extends StatelessWidget {
             ],
           );
         }),
-
-        body: Obx(() {
-          if (c.isLoading.value) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'جاري التحميل...',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+        body: ResponsiveWrapper(
+          child: Obx(() {
+            if (c.isLoading.value) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: theme.colorScheme.primary,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'جاري التحميل...',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (c.items.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.shopping_basket_outlined,
+                        size: 80,
+                        color: theme.colorScheme.primary.withOpacity(0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'لا توجد عناصر بعد',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'ابدأ بإضافة عناصر إلى القائمة',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => _showModernItemDialog(context, c, null),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('إضافة أول عنصر'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Calculate total
+            final totalAmount = c.items.fold<double>(
+              0,
+              (sum, item) => sum + (item.qty * item.unitPrice),
             );
-          }
+            final stationery = c.menu.value?.stationeryExpenses ?? 0;
+            final transport = c.menu.value?.transportationExpenses ?? 0;
+            final expensesTotal = stationery + transport;
 
-          if (c.items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.5),
-                      shape: BoxShape.circle,
+            return Column(
+              children: [
+                // Summary cards - single horizontal row
+                Container(
+                  height: 60,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Builder(
+                      builder: (ctx) {
+                        final grandTotal = totalAmount + expensesTotal;
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Row(
+                            children: [
+                              // Put expenses first (like menus page)
+                              _statChip(
+                                context,
+                                Icons.edit_note_rounded,
+                                'قرطاسية',
+                                '${stationery.toStringAsFixed(2)} ر.س',
+                                Colors.purple,
+                                onTap: () => _showExpensesDialog(context, c),
+                              ),
+                              const SizedBox(width: 8),
+                              _statChip(
+                                context,
+                                Icons.local_shipping_rounded,
+                                'نقل',
+                                '${transport.toStringAsFixed(2)} ر.س',
+                                Colors.orange,
+                                onTap: () => _showExpensesDialog(context, c),
+                              ),
+                              const SizedBox(width: 8),
+                              _statChip(
+                                context,
+                                Icons.payments_rounded,
+                                'إجمالي العناصر',
+                                '${totalAmount.toStringAsFixed(2)} ر.س',
+                                theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              _statChip(
+                                context,
+                                Icons.account_balance_wallet_rounded,
+                                'الإجمالي الكلي',
+                                '${grandTotal.toStringAsFixed(2)} ر.س',
+                                Colors.green,
+                                highlighted: true,
+                              ),
+                              const SizedBox(width: 8),
+                              _statChip(
+                                context,
+                                Icons.inventory_2_rounded,
+                                'العناصر',
+                                '${c.items.length}',
+                                theme.colorScheme.secondary,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                    child: Icon(
-                      Icons.shopping_basket_outlined,
-                      size: 80,
-                      color: theme.colorScheme.primary.withOpacity(0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'لا توجد عناصر بعد',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'ابدأ بإضافة عناصر إلى القائمة',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: () => _showModernItemDialog(context, c, null),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('إضافة أول عنصر'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Calculate total
-          final totalAmount = c.items.fold<double>(
-            0,
-            (sum, item) => sum + (item.qty * item.unitPrice),
-          );
-          final stationery = c.menu.value?.stationeryExpenses ?? 0;
-          final transport = c.menu.value?.transportationExpenses ?? 0;
-          final expensesTotal = stationery + transport;
-
-          return Column(
-            children: [
-              // Summary cards - single horizontal row
-              Container(
-                height: 60,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: Builder(
-                    builder: (ctx) {
-                      final grandTotal = totalAmount + expensesTotal;
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            // Put expenses first (like menus page)
-                            _statChip(
-                              context,
-                              Icons.edit_note_rounded,
-                              'قرطاسية',
-                              '${stationery.toStringAsFixed(2)} ر.س',
-                              Colors.purple,
-                              onTap: () => _showExpensesDialog(context, c),
-                            ),
-                            const SizedBox(width: 8),
-                            _statChip(
-                              context,
-                              Icons.local_shipping_rounded,
-                              'نقل',
-                              '${transport.toStringAsFixed(2)} ر.س',
-                              Colors.orange,
-                              onTap: () => _showExpensesDialog(context, c),
-                            ),
-                            const SizedBox(width: 8),
-                            _statChip(
-                              context,
-                              Icons.payments_rounded,
-                              'إجمالي العناصر',
-                              '${totalAmount.toStringAsFixed(2)} ر.س',
-                              theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            _statChip(
-                              context,
-                              Icons.account_balance_wallet_rounded,
-                              'الإجمالي الكلي',
-                              '${grandTotal.toStringAsFixed(2)} ر.س',
-                              Colors.green,
-                              highlighted: true,
-                            ),
-                            const SizedBox(width: 8),
-                            _statChip(
-                              context,
-                              Icons.inventory_2_rounded,
-                              'العناصر',
-                              '${c.items.length}',
-                              theme.colorScheme.secondary,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
                   ),
                 ),
-              ),
 
-              // Items list
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  itemCount: c.items.length,
-                  itemBuilder:
-                      (context, i) =>
-                          _buildModernItemCard(context, c, c.items[i], i),
+                // Items list
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 100),
+                    itemCount: c.items.length,
+                    itemBuilder:
+                        (context, i) =>
+                            _buildModernItemCard(context, c, c.items[i], i),
+                  ),
                 ),
-              ),
-            ],
-          );
-        }),
+              ],
+            );
+          }),
+        ),
       ),
     );
   }
@@ -400,7 +402,7 @@ class MenuItemsPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: () => _showModernItemDialog(context, c, item),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 // Category icon

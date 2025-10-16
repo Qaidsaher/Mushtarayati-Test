@@ -4,6 +4,8 @@ import '../../../core/controllers/user_controller.dart';
 import '../../../core/controllers/theme_controller.dart';
 import '../../../core/theme/palette.dart';
 import '../../../core/utils/app_info.dart';
+import '../../../core/widgets/font_size_slider.dart';
+import '../../../core/widgets/responsive_wrapper.dart';
 import '../../../modules/auth/controllers/auth_controller.dart' as core_auth;
 
 class ProfileSettingsPage extends StatelessWidget {
@@ -18,61 +20,80 @@ class ProfileSettingsPage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            // Modern header with gradient
-            _buildModernHeader(context, userCtrl, theme),
+        body: ResponsiveWrapper(
+          padding: EdgeInsets.zero,
+          child: CustomScrollView(
+            slivers: [
+              // Modern header with gradient
+              _buildModernHeader(context, userCtrl, theme),
 
-            // Content
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // User Profile Card
-                  _buildProfileCard(context, userCtrl),
-                  const SizedBox(height: 20),
+              // Content
+              SliverPadding(
+                padding: const EdgeInsets.all(12),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // User Profile Card
+                    _buildProfileCard(context, userCtrl),
+                    const SizedBox(height: 20),
 
-                  // Theme & Display Section
-                  _buildSectionHeader(context, 'المظهر والعرض', Icons.palette),
-                  const SizedBox(height: 12),
-                  _buildThemeCard(context, theme),
-                  const SizedBox(height: 20),
+                    // Theme & Display Section
+                    _buildSectionHeader(
+                      context,
+                      'المظهر والعرض',
+                      Icons.palette,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildThemeCard(context, theme),
+                    const SizedBox(height: 20),
 
-                  // Accessibility Section
-                  _buildSectionHeader(
-                    context,
-                    'إمكانية الوصول',
-                    Icons.accessibility_new,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildAccessibilityCard(context, theme),
-                  const SizedBox(height: 20),
+                    // Accessibility Section
+                    _buildSectionHeader(
+                      context,
+                      'إمكانية الوصول',
+                      Icons.accessibility_new,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildAccessibilityCard(context, theme),
+                    const SizedBox(height: 20),
 
-                  // Font Settings Section
-                  _buildSectionHeader(context, 'الخط والحجم', Icons.text_fields),
-                  const SizedBox(height: 12),
-                  _buildFontCard(context, theme),
-                  const SizedBox(height: 20),
+                    // Font Settings Section
+                    _buildSectionHeader(
+                      context,
+                      'الخط والحجم',
+                      Icons.text_fields,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFontCard(context, theme),
+                    const SizedBox(height: 20),
 
-                  // Color Palette Section
-                  _buildSectionHeader(context, 'ألوان التطبيق', Icons.color_lens),
-                  const SizedBox(height: 12),
-                  _buildColorPaletteCard(context, theme),
-                  const SizedBox(height: 20),
+                    // Color Palette Section
+                    _buildSectionHeader(
+                      context,
+                      'ألوان التطبيق',
+                      Icons.color_lens,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildColorPaletteCard(context, theme),
+                    const SizedBox(height: 20),
 
-                  // About App
-                  _buildSectionHeader(context, 'حول التطبيق', Icons.info_outline),
-                  const SizedBox(height: 12),
-                  _buildAppInfoCard(context),
-                  const SizedBox(height: 32),
+                    // About App
+                    _buildSectionHeader(
+                      context,
+                      'حول التطبيق',
+                      Icons.info_outline,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildAppInfoCard(context),
+                    const SizedBox(height: 32),
 
-                  // Logout Button
-                  _buildLogoutButton(authCtrl, context),
-                  const SizedBox(height: 32),
-                ]),
+                    // Logout Button
+                    _buildLogoutButton(authCtrl, context),
+                    const SizedBox(height: 32),
+                  ]),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -90,16 +111,11 @@ class ProfileSettingsPage extends StatelessWidget {
       elevation: 0,
       backgroundColor: Theme.of(context).colorScheme.surface,
       flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [
-          StretchMode.zoomBackground,
-          StretchMode.fadeTitle,
-        ],
+        stretchModes: const [StretchMode.zoomBackground, StretchMode.fadeTitle],
         centerTitle: true,
         title: const Text(
           'الإعدادات',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         background: Stack(
           fit: StackFit.expand,
@@ -120,10 +136,7 @@ class ProfileSettingsPage extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.3),
-                    ],
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -138,10 +151,7 @@ class ProfileSettingsPage extends StatelessWidget {
                   () => Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 4,
-                      ),
+                      border: Border.all(color: Colors.white, width: 4),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.2),
@@ -198,9 +208,9 @@ class ProfileSettingsPage extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -233,17 +243,17 @@ class ProfileSettingsPage extends StatelessWidget {
                   userCtrl.displayName.value.isNotEmpty
                       ? userCtrl.displayName.value
                       : 'مستخدم جديد',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
                   userCtrl.email.value.isNotEmpty
                       ? userCtrl.email.value
                       : 'البريد الإلكتروني غير محدد',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 trailing: IconButton.filledTonal(
                   icon: const Icon(Icons.edit),
@@ -269,9 +279,9 @@ class ProfileSettingsPage extends StatelessWidget {
           children: [
             Text(
               'اختر وضع العرض',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
             Obx(
@@ -297,9 +307,7 @@ class ProfileSettingsPage extends StatelessWidget {
                 onSelectionChanged: (Set<ThemeMode> newSelection) {
                   theme.setTheme(newSelection.first);
                 },
-                style: ButtonStyle(
-                  visualDensity: VisualDensity.comfortable,
-                ),
+                style: ButtonStyle(visualDensity: VisualDensity.comfortable),
               ),
             ),
           ],
@@ -308,10 +316,7 @@ class ProfileSettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAccessibilityCard(
-    BuildContext context,
-    ThemeController theme,
-  ) {
+  Widget _buildAccessibilityCard(BuildContext context, ThemeController theme) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -369,7 +374,10 @@ class ProfileSettingsPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          color:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(Icons.touch_app, size: 20),
@@ -429,59 +437,22 @@ class ProfileSettingsPage extends StatelessWidget {
                 Text(
                   'حجم الخط',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Obx(
                   () => Text(
                     '${theme.baseFontSize.value.toInt()}',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                IconButton.filled(
-                  onPressed: theme.decreaseFontSize,
-                  icon: const Icon(Icons.remove),
-                  tooltip: 'تصغير',
-                  style: IconButton.styleFrom(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.secondaryContainer,
-                    foregroundColor:
-                        Theme.of(context).colorScheme.onSecondaryContainer,
-                  ),
-                ),
-                Expanded(
-                  child: Obx(
-                    () => Slider(
-                      value: theme.baseFontSize.value,
-                      min: 12,
-                      max: 24,
-                      divisions: 12,
-                      label: theme.baseFontSize.value.toInt().toString(),
-                      onChanged: theme.setBaseFontSize,
-                    ),
-                  ),
-                ),
-                IconButton.filled(
-                  onPressed: theme.increaseFontSize,
-                  icon: const Icon(Icons.add),
-                  tooltip: 'تكبير',
-                  style: IconButton.styleFrom(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.secondaryContainer,
-                    foregroundColor:
-                        Theme.of(context).colorScheme.onSecondaryContainer,
-                  ),
-                ),
-              ],
-            ),
+            const FontSizeSlider(min: 12, max: 24),
             const SizedBox(height: 20),
 
             // Font Family Selector
@@ -491,21 +462,22 @@ class ProfileSettingsPage extends StatelessWidget {
                 Text(
                   'نوع الخط',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Obx(
                   () => DropdownButton<String>(
                     value: theme.fontFamily.value,
                     borderRadius: BorderRadius.circular(12),
-                    items: theme.availableFonts
-                        .map(
-                          (font) => DropdownMenuItem(
-                            value: font.name,
-                            child: Text(font.displayName),
-                          ),
-                        )
-                        .toList(),
+                    items:
+                        theme.availableFonts
+                            .map(
+                              (font) => DropdownMenuItem(
+                                value: font.name,
+                                child: Text(font.displayName),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) {
                       if (value != null) theme.setFontFamily(value);
                     },
@@ -540,9 +512,9 @@ class ProfileSettingsPage extends StatelessWidget {
                       Text(
                         'معاينة',
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -584,8 +556,7 @@ class ProfileSettingsPage extends StatelessWidget {
                     snackPosition: SnackPosition.BOTTOM,
                     backgroundColor:
                         Theme.of(context).colorScheme.primaryContainer,
-                    colorText:
-                        Theme.of(context).colorScheme.onPrimaryContainer,
+                    colorText: Theme.of(context).colorScheme.onPrimaryContainer,
                     margin: const EdgeInsets.all(16),
                   );
                 },
@@ -610,9 +581,9 @@ class ProfileSettingsPage extends StatelessWidget {
           children: [
             Text(
               'اختر لون التطبيق',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
             GridView.builder(
@@ -627,129 +598,125 @@ class ProfileSettingsPage extends StatelessWidget {
               itemCount: Palette.themeColors.length,
               itemBuilder: (context, index) {
                 final colorPalette = Palette.themeColors[index];
-                return Obx(
-                  () {
-                    final isSelected =
-                        theme.colorSeed.value.value == colorPalette.seed.value;
-                    return InkWell(
-                      onTap: () => theme.setColor(colorPalette.seed),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: colorPalette.seed,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.transparent,
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            if (isSelected)
-                              BoxShadow(
-                                color: colorPalette.seed.withOpacity(0.4),
-                                blurRadius: 8,
-                                spreadRadius: 2,
-                              ),
-                          ],
+                return Obx(() {
+                  final isSelected =
+                      theme.colorSeed.value.value == colorPalette.seed.value;
+                  return InkWell(
+                    onTap: () => theme.setColor(colorPalette.seed),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: colorPalette.seed,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color:
+                              isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.transparent,
+                          width: 3,
                         ),
-                        child: Stack(
-                          children: [
-                            Center(
-                              child: Text(
-                                colorPalette.icon,
-                                style: const TextStyle(fontSize: 28),
-                              ),
+                        boxShadow: [
+                          if (isSelected)
+                            BoxShadow(
+                              color: colorPalette.seed.withOpacity(0.4),
+                              blurRadius: 8,
+                              spreadRadius: 2,
                             ),
-                            if (isSelected)
-                              Positioned(
-                                top: 4,
-                                left: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.check_circle,
-                                    color: colorPalette.seed,
-                                    size: 20,
-                                  ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: Text(
+                              colorPalette.icon,
+                              style: const TextStyle(fontSize: 28),
+                            ),
+                          ),
+                          if (isSelected)
+                            Positioned(
+                              top: 4,
+                              left: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.check_circle,
+                                  color: colorPalette.seed,
+                                  size: 20,
                                 ),
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
-                    );
-                  },
-                );
+                    ),
+                  );
+                });
               },
             ),
             const SizedBox(height: 16),
             // Show selected color name
-            Obx(
-              () {
-                final selectedPalette = Palette.themeColors.firstWhere(
-                  (p) => p.seed.value == theme.colorSeed.value.value,
-                  orElse: () => Palette.themeColors[0],
-                );
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorSeed.value.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: theme.colorSeed.value.withOpacity(0.3),
+            Obx(() {
+              final selectedPalette = Palette.themeColors.firstWhere(
+                (p) => p.seed.value == theme.colorSeed.value.value,
+                orElse: () => Palette.themeColors[0],
+              );
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorSeed.value.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorSeed.value.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          selectedPalette.icon,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                selectedPalette.name,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorSeed.value,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                selectedPalette.description,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.copyWith(
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            selectedPalette.icon,
-                            style: const TextStyle(fontSize: 24),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  selectedPalette.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorSeed.value,
-                                      ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  selectedPalette.description,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                  ],
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -787,16 +754,15 @@ class ProfileSettingsPage extends StatelessWidget {
                     Text(
                       'حول التطبيق',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'الإصدار ${AppInfo.version}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -823,9 +789,7 @@ class ProfileSettingsPage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.errorContainer,
         foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         minimumSize: const Size(double.infinity, 56),
       ),
       onPressed: () async {
@@ -858,16 +822,12 @@ class ProfileSettingsPage extends StatelessWidget {
   }
 
   void _showEditNameDialog(BuildContext context, UserController userCtrl) {
-    final controller =
-        TextEditingController(text: userCtrl.displayName.value);
+    final controller = TextEditingController(text: userCtrl.displayName.value);
     Get.dialog(
       AlertDialog(
         title: Row(
           children: [
-            Icon(
-              Icons.edit,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+            Icon(Icons.edit, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 12),
             const Text('تعديل الاسم'),
           ],
@@ -879,17 +839,12 @@ class ProfileSettingsPage extends StatelessWidget {
             labelText: 'الاسم',
             hintText: 'أدخل الاسم الجديد',
             prefixIcon: const Icon(Icons.person_outline),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           autofocus: true,
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('إلغاء'),
-          ),
+          TextButton(onPressed: () => Get.back(), child: const Text('إلغاء')),
           FilledButton(
             onPressed: () async {
               final name = controller.text.trim();

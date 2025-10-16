@@ -5,18 +5,25 @@ import '../../data/repositories/menu_repository.dart';
 import '../../data/repositories/item_repository.dart';
 import '../../data/repositories/category_repository.dart';
 import '../../data/models/category_model.dart';
+import '../../data/repositories/branch_repository.dart';
 
 class ExcelExportServices {
-  static Future<File> createDayStyleExcel(DateTime date) async {
+  static Future<File> createDayStyleExcel(
+    DateTime date, {
+    String? branchId,
+  }) async {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
     final catRepo = CategoryRepository();
+    final branchRepo = BranchRepository();
 
     // === Format date ===
     final dateStr =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final menus = await menuRepo.list(date: dateStr);
+    final menus = await menuRepo.list(date: dateStr, branchId: branchId);
     final cats = await catRepo.getAll();
+    final branches = await branchRepo.getAll();
+    final branchNames = {for (final b in branches) b.id: b.name};
 
     // === Create workbook and single sheet ===
     final Workbook workbook = Workbook();
@@ -58,11 +65,15 @@ class ExcelExportServices {
       final items = await itemRepo.listByMenu(menu.id);
       final baseCol = startCol + idx * (colsPerSection + dividerWidth);
       final bgColor = sectionColors[idx % sectionColors.length];
+      final branchName =
+          (menu.branchId != null && branchNames.containsKey(menu.branchId))
+              ? branchNames[menu.branchId]!
+              : 'فرع غير معروف';
 
       // --- Section title ---
       sheet.getRangeByIndex(3, baseCol, 3, baseCol + 3).merge();
       final sectionTitle = sheet.getRangeByIndex(3, baseCol);
-      sectionTitle.setText('${menu.name} $dateStr');
+      sectionTitle.setText('$branchName • ${menu.name} $dateStr');
       sectionTitle.cellStyle
         ..bold = true
         ..fontSize = 13
@@ -404,19 +415,43 @@ class ExcelExportServices {
 
   static Future<File> createPeriodStyleExcel({
     required DateTime startDate,
-    required String periodType, // "week" or "month"
-    String reportType = "sheets", // "sheets" or "summary"
+    required String periodType, // "week" أو "month" أو "custom"
+    String reportType = "sheets", // "sheets" أو "summary"
+    String? branchId,
+    DateTime? endDateOverride,
   }) async {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
+    final branchRepo = BranchRepository();
 
     // === تحديد نطاق الأيام بناءً على النوع ===
-    DateTime endDate;
+    final normalizedStart = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
+
+    DateTime computedEnd;
     if (periodType == "week") {
-      endDate = startDate.add(const Duration(days: 6));
+      computedEnd = normalizedStart.add(const Duration(days: 6));
+    } else if (periodType == "month") {
+      computedEnd = DateTime(
+        normalizedStart.year,
+        normalizedStart.month + 1,
+        0,
+      );
     } else {
-      endDate = DateTime(startDate.year, startDate.month + 1, 0);
+      computedEnd = endDateOverride ?? normalizedStart;
     }
+
+    final DateTime endDate =
+        endDateOverride != null
+            ? DateTime(
+              endDateOverride.year,
+              endDateOverride.month,
+              endDateOverride.day,
+            )
+            : computedEnd;
 
     final Workbook workbook = Workbook();
 
@@ -431,17 +466,20 @@ class ExcelExportServices {
     final catRepo = CategoryRepository();
     final cats = await catRepo.getAll();
     final Map<String, String> catNames = {for (final c in cats) c.id: c.name};
+    final branchNames = {
+      for (final b in await branchRepo.getAll()) b.id: b.name,
+    };
 
     if (reportType == "sheets") {
       // === لكل يوم ورقة منفصلة ===
       for (
-        DateTime d = startDate;
+        DateTime d = normalizedStart;
         !d.isAfter(endDate);
         d = d.add(const Duration(days: 1))
       ) {
         final dateStr =
             '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-        final menus = await menuRepo.list(date: dateStr);
+        final menus = await menuRepo.list(date: dateStr, branchId: branchId);
         if (menus.isEmpty) continue;
 
         final sheet = workbook.worksheets.addWithName('يوم ${d.day}');
@@ -469,11 +507,15 @@ class ExcelExportServices {
           final items = await itemRepo.listByMenu(menu.id);
           final baseCol = startCol + idx * (colsPerSection + dividerWidth);
           final bgColor = sectionColors[idx % sectionColors.length];
+          final branchName =
+              (menu.branchId != null && branchNames.containsKey(menu.branchId))
+                  ? branchNames[menu.branchId]!
+                  : 'فرع غير معروف';
 
           sheet.getRangeByIndex(3, baseCol, 3, baseCol + 3).merge();
           final sectionTitle = sheet.getRangeByIndex(3, baseCol);
           sectionTitle
-            ..setText('${menu.name} $dateStr')
+            ..setText('$branchName • ${menu.name} $dateStr')
             ..cellStyle.bold = true
             ..cellStyle.fontSize = 13
             ..cellStyle.backColor = bgColor
@@ -614,22 +656,26 @@ class ExcelExportServices {
       final sheet = workbook.worksheets[0];
       sheet.name = 'ملخص الفترة';
       sheet.getRangeByIndex(1, 1).setText('اليوم');
-      sheet.getRangeByIndex(1, 2).setText('الفرع');
+      sheet.getRangeByIndex(1, 2).setText('الفرع / القائمة');
       sheet.getRangeByIndex(1, 3).setText('الإجمالي');
       sheet.getRangeByIndex(1, 4).setText('عدد الأصناف');
       sheet.getRangeByIndex(1, 5).setText('تاريخ');
 
       int row = 2;
       for (
-        DateTime d = startDate;
+        DateTime d = normalizedStart;
         !d.isAfter(endDate);
         d = d.add(const Duration(days: 1))
       ) {
         final dateStr =
             '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-        final menus = await menuRepo.list(date: dateStr);
+        final menus = await menuRepo.list(date: dateStr, branchId: branchId);
         for (var menu in menus) {
           final items = await itemRepo.listByMenu(menu.id);
+          final branchName =
+              (menu.branchId != null && branchNames.containsKey(menu.branchId))
+                  ? branchNames[menu.branchId]!
+                  : 'فرع غير معروف';
           final total = items.fold<double>(
             0,
             (sum, it) =>
@@ -639,7 +685,7 @@ class ExcelExportServices {
           final double transport =
               (menu.transportationExpenses ?? 0).toDouble();
           sheet.getRangeByIndex(row, 1).setText('اليوم ${d.day}');
-          sheet.getRangeByIndex(row, 2).setText(menu.name);
+          sheet.getRangeByIndex(row, 2).setText('$branchName • ${menu.name}');
           sheet
               .getRangeByIndex(row, 3)
               .setNumber(total + stationery + transport);

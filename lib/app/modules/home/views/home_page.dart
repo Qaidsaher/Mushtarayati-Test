@@ -1,8 +1,11 @@
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controllers/home_controller.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
+
+import '../controllers/home_controller.dart';
 
 class HomePage extends GetView<HomeController> {
   const HomePage({super.key});
@@ -13,7 +16,7 @@ class HomePage extends GetView<HomeController> {
       textDirection: ui.TextDirection.rtl,
       child: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return _buildLoadingSkeleton(context);
         }
 
         return RefreshIndicator(
@@ -187,48 +190,75 @@ class HomePage extends GetView<HomeController> {
   }
 
   Widget _buildQuickStatsGrid(BuildContext context) {
-    return Obx(
-      () => GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.5,
-        children: [
-          _buildStatCard(
-            context,
-            'اليوم',
-            controller.totalPurchasesToday.value,
-            Icons.today,
-            Colors.blue,
-            subtitle: '${controller.totalMenusToday.value} قائمة',
-          ),
-          _buildStatCard(
-            context,
-            'هذا الأسبوع',
-            controller.totalPurchasesWeek.value,
-            Icons.date_range,
-            Colors.green,
-          ),
-          _buildStatCard(
-            context,
-            'هذا الشهر',
-            controller.totalPurchasesMonth.value,
-            Icons.calendar_month,
-            Colors.orange,
-          ),
-          _buildStatCard(
-            context,
-            'الفروع',
-            controller.totalBranches.value.toDouble(),
-            Icons.store,
-            Colors.purple,
-            isCurrency: false,
-            subtitle: '${controller.totalCategories.value} فئة',
-          ),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        var maxWidth = constraints.maxWidth;
+        if (maxWidth == double.infinity) {
+          maxWidth = MediaQuery.of(context).size.width;
+        }
+        final crossAxisCount = _calculateColumnsForWidth(maxWidth, maxCount: 4);
+        const spacing = 12.0;
+        const cardHeight = 170.0;
+        final availableWidth = maxWidth - (spacing * (crossAxisCount - 1));
+        final itemWidth = availableWidth / crossAxisCount;
+        final aspectRatio = itemWidth / cardHeight;
+
+        return Obx(() {
+          final stats = [
+            _StatCardConfig(
+              title: 'اليوم',
+              value: controller.totalPurchasesToday.value,
+              icon: Icons.today,
+              color: Colors.blue,
+              subtitle: '${controller.totalMenusToday.value} قائمة',
+            ),
+            _StatCardConfig(
+              title: 'هذا الأسبوع',
+              value: controller.totalPurchasesWeek.value,
+              icon: Icons.date_range,
+              color: Colors.green,
+            ),
+            _StatCardConfig(
+              title: 'هذا الشهر',
+              value: controller.totalPurchasesMonth.value,
+              icon: Icons.calendar_month,
+              color: Colors.orange,
+            ),
+            _StatCardConfig(
+              title: 'الفروع',
+              value: controller.totalBranches.value.toDouble(),
+              icon: Icons.store,
+              color: Colors.purple,
+              isCurrency: false,
+              subtitle: '${controller.totalCategories.value} فئة',
+            ),
+          ];
+
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: stats.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              childAspectRatio: aspectRatio,
+            ),
+            itemBuilder: (context, index) {
+              final stat = stats[index];
+              return _buildStatCard(
+                context,
+                stat.title,
+                stat.value,
+                stat.icon,
+                stat.color,
+                isCurrency: stat.isCurrency,
+                subtitle: stat.subtitle,
+              );
+            },
+          );
+        });
+      },
     );
   }
 
@@ -484,21 +514,38 @@ class HomePage extends GetView<HomeController> {
 
   Widget _buildTopCategories(BuildContext context) {
     return Obx(() {
-      if (controller.topCategories.isEmpty) {
+      final categories = controller.topCategories;
+      if (categories.isEmpty) {
         return const SizedBox.shrink();
       }
 
-      return SizedBox(
-        height: 120,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          reverse: false,
-          itemCount: controller.topCategories.length,
-          itemBuilder: (context, index) {
-            final category = controller.topCategories[index];
-            return _buildCategoryCard(context, category, index);
-          },
-        ),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          var maxWidth = constraints.maxWidth;
+          if (maxWidth == double.infinity) {
+            maxWidth = MediaQuery.of(context).size.width;
+          }
+          const cardHeight = 160.0;
+          final calculatedWidth = maxWidth * 0.45;
+          final itemWidth = calculatedWidth.clamp(160.0, 280.0);
+
+          return SizedBox(
+            height: cardHeight,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              reverse: false,
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return SizedBox(
+                  width: itemWidth,
+                  child: _buildCategoryCard(context, category, index),
+                );
+              },
+            ),
+          );
+        },
       );
     });
   }
@@ -520,9 +567,7 @@ class HomePage extends GetView<HomeController> {
 
     try {
       return Card(
-        margin: const EdgeInsets.only(right: 12),
-        child: Container(
-          width: 140,
+        child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,4 +770,132 @@ class HomePage extends GetView<HomeController> {
       );
     }
   }
+
+  Widget _buildLoadingSkeleton(BuildContext context) {
+    final theme = Theme.of(context);
+    final baseColor = theme.colorScheme.surfaceVariant.withOpacity(0.5);
+    final highlightColor = theme.colorScheme.surface.withOpacity(0.9);
+
+    Widget shimmerBox({
+      double height = 120,
+      double? width,
+      BorderRadius? radius,
+    }) {
+      return Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        child: Container(
+          height: height,
+          width: width,
+          decoration: BoxDecoration(
+            color: baseColor,
+            borderRadius: radius ?? BorderRadius.circular(16),
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        shimmerBox(height: 150),
+        const SizedBox(height: 24),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            var maxWidth = constraints.maxWidth;
+            if (maxWidth == double.infinity) {
+              maxWidth = MediaQuery.of(context).size.width;
+            }
+            final crossAxisCount = _calculateColumnsForWidth(
+              maxWidth,
+              maxCount: 4,
+            );
+            const spacing = 12.0;
+            final availableWidth = maxWidth - (spacing * (crossAxisCount - 1));
+            final itemWidth = availableWidth / crossAxisCount;
+
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: List.generate(
+                4,
+                (_) => shimmerBox(height: 140, width: itemWidth),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        shimmerBox(height: 100),
+        const SizedBox(height: 24),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            var maxWidth = constraints.maxWidth;
+            if (maxWidth == double.infinity) {
+              maxWidth = MediaQuery.of(context).size.width;
+            }
+            final crossAxisCount = _calculateColumnsForWidth(
+              maxWidth,
+              maxCount: 3,
+            );
+            const spacing = 12.0;
+            final availableWidth = maxWidth - (spacing * (crossAxisCount - 1));
+            final itemWidth = availableWidth / crossAxisCount;
+
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: List.generate(
+                3,
+                (_) => shimmerBox(height: 160, width: itemWidth),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        shimmerBox(height: 80),
+        const SizedBox(height: 12),
+        shimmerBox(height: 80),
+        const SizedBox(height: 12),
+        shimmerBox(height: 80),
+      ],
+    );
+  }
+
+  int _calculateColumnsForWidth(double width, {required int maxCount}) {
+    var columns = 1;
+    if (width >= 600) {
+      columns = 2;
+    }
+    if (width >= 900) {
+      columns = 3;
+    }
+    if (width >= 1200) {
+      columns = 4;
+    }
+    if (columns > maxCount) {
+      columns = maxCount;
+    }
+    if (columns < 1) {
+      columns = 1;
+    }
+    return columns;
+  }
+}
+
+class _StatCardConfig {
+  const _StatCardConfig({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.isCurrency = true,
+    this.subtitle,
+  });
+
+  final String title;
+  final double value;
+  final IconData icon;
+  final Color color;
+  final bool isCurrency;
+  final String? subtitle;
 }

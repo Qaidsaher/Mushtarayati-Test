@@ -4,7 +4,9 @@ import 'package:get/get.dart';
 import 'package:saher_kit/app/core/services/excel_services.dart';
 import '../controllers/menus_controller.dart';
 import '../../categories/controllers/categories_controller.dart';
+
 import '../../../core/services/pdf_service.dart';
+import '../../../core/widgets/responsive_wrapper.dart';
 
 /// الصفحة الرئيسية للقوائم اليومية
 class MenusPage extends StatelessWidget {
@@ -30,15 +32,12 @@ class MenusPage extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
-
-        /// زر الإضافة يظهر فقط عندما يكون اليوم الحالي محدد
         floatingActionButton: Obx(() {
           final today = DateTime.now();
           final isToday =
               c.selectedDate.value.year == today.year &&
               c.selectedDate.value.month == today.month &&
               c.selectedDate.value.day == today.day;
-
           return isToday
               ? FloatingActionButton.extended(
                 onPressed: () => _showAddMenuDialog(context, c),
@@ -49,463 +48,480 @@ class MenusPage extends StatelessWidget {
               )
               : const SizedBox.shrink();
         }),
-
-        /// جسم الصفحة
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // شريط الأيام الثلاثة فقط + أزرار التصدير
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Obx(() {
-                final dates = c.availableDates;
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      // ✅ قائمة الأيام القابلة للاختيار
-                      Row(
-                        children:
-                            dates.map((d) {
-                              final isSelected = c.selectedDate.value == d;
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 8),
-                                child: ChoiceChip(
-                                  label: Text(
-                                    formatDate(d),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          isSelected
-                                              ? theme.colorScheme.primary
-                                              : theme.colorScheme.onSurface,
+        body: ResponsiveWrapper(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // شريط الأيام الثلاثة فقط + أزرار التصدير
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                child: Obx(() {
+                  final dates = c.availableDates;
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        // ✅ قائمة الأيام القابلة للاختيار
+                        Row(
+                          children:
+                              dates.map((d) {
+                                final isSelected = c.selectedDate.value == d;
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: ChoiceChip(
+                                    label: Text(
+                                      formatDate(d),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            isSelected
+                                                ? theme.colorScheme.primary
+                                                : theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    selected: isSelected,
+                                    onSelected: (_) => c.selectedDate.value = d,
+                                    selectedColor:
+                                        theme.colorScheme.primaryContainer,
+                                    backgroundColor: theme
+                                        .colorScheme
+                                        .surfaceContainerHighest
+                                        .withAlpha((0.6 * 255).toInt()),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
-                                  selected: isSelected,
-                                  onSelected: (_) => c.selectedDate.value = d,
-                                  selectedColor:
-                                      theme.colorScheme.primaryContainer,
-                                  backgroundColor: theme
-                                      .colorScheme
-                                      .surfaceContainerHighest
-                                      .withAlpha((0.6 * 255).toInt()),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                      ),
-
-                      const SizedBox(width: 20),
-
-                      // ✅ أزرار التصدير
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          IconButton(
-                            tooltip: 'تصدير إكسل (اليوم)',
-                            icon: const Icon(Icons.table_chart),
-                            onPressed: () async {
-                              try {
-                                Get.snackbar(
-                                  'تصدير',
-                                  'جارٍ تحضير ملف الإكسل...',
-                                  snackPosition: SnackPosition.BOTTOM,
                                 );
-                                final menusForDate = c.filteredMenus;
-                                if (menusForDate.isEmpty) {
+                              }).toList(),
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        // ✅ أزرار التصدير
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            IconButton(
+                              tooltip: 'تصدير إكسل (اليوم)',
+                              icon: const Icon(Icons.table_chart),
+                              onPressed: () async {
+                                try {
                                   Get.snackbar(
-                                    'تنبيه',
-                                    'لا توجد قوائم لهذا اليوم',
+                                    'تصدير',
+                                    'جارٍ تحضير ملف الإكسل...',
                                     snackPosition: SnackPosition.BOTTOM,
                                   );
-                                  return;
-                                }
-                                final ds = c.selectedDate.value;
-                                final file =
-                                    await ExcelExportServices.createDayStyleExcel(
-                                      ds,
+                                  final menusForDate = c.filteredMenus;
+                                  if (menusForDate.isEmpty) {
+                                    Get.snackbar(
+                                      'تنبيه',
+                                      'لا توجد قوائم لهذا اليوم',
+                                      snackPosition: SnackPosition.BOTTOM,
                                     );
+                                    return;
+                                  }
+                                  final ds = c.selectedDate.value;
+                                  final file =
+                                      await ExcelExportServices.createDayStyleExcel(
+                                        ds,
+                                      );
 
-                                await PdfService.shareFile(
-                                  file,
-                                  subject:
-                                      'تصدير إكسل - ${ds.year}/${ds.month}/${ds.day}',
-                                  text:
-                                      'ملف الإكسل لقوائم التاريخ ${ds.year}/${ds.month}/${ds.day}',
-                                );
-                                Get.snackbar(
-                                  'تم',
-                                  'تم إنشاء ومشاركة ملف الإكسل',
-                                );
-                              } catch (e) {
-                                Get.snackbar('خطأ', 'حدث خطأ أثناء التصدير');
-                              }
-                            },
-                          ),
-                          IconButton(
-                            tooltip: 'تصدير PDF (اليوم)',
-                            icon: const Icon(Icons.picture_as_pdf),
-                            onPressed: () async {
-                              try {
-                                Get.snackbar(
-                                  'تصدير',
-                                  'جارٍ إنشاء ملف PDF...',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                );
-                                final menusForDate = c.filteredMenus;
-                                if (menusForDate.isEmpty) {
+                                  await PdfService.shareFile(
+                                    file,
+                                    subject:
+                                        'تصدير إكسل - ${ds.year}/${ds.month}/${ds.day}',
+                                    text:
+                                        'ملف الإكسل لقوائم التاريخ ${ds.year}/${ds.month}/${ds.day}',
+                                  );
                                   Get.snackbar(
-                                    'تنبيه',
-                                    'لا توجد قوائم لهذا اليوم',
+                                    'تم',
+                                    'تم إنشاء ومشاركة ملف الإكسل',
+                                  );
+                                } catch (e) {
+                                  Get.snackbar('خطأ', 'حدث خطأ أثناء التصدير');
+                                }
+                              },
+                            ),
+                            IconButton(
+                              tooltip: 'تصدير PDF (اليوم)',
+                              icon: const Icon(Icons.picture_as_pdf),
+                              onPressed: () async {
+                                try {
+                                  Get.snackbar(
+                                    'تصدير',
+                                    'جارٍ إنشاء ملف PDF...',
                                     snackPosition: SnackPosition.BOTTOM,
                                   );
-                                  return;
-                                }
-                                final ds = c.selectedDate.value;
-                                final file =
-                                    await PdfService.createDayStylePdf(
-                                      ds,
-                                      // fontAsset:
-                                      //     'assets/fonts/NotoNaskhArabic-Regular.ttf',
-                                      // logoAsset: 'assets/images/logo.png',
+                                  final menusForDate = c.filteredMenus;
+                                  if (menusForDate.isEmpty) {
+                                    Get.snackbar(
+                                      'تنبيه',
+                                      'لا توجد قوائم لهذا اليوم',
+                                      snackPosition: SnackPosition.BOTTOM,
                                     );
-                                await PdfService.shareFile(
-                                  file,
-                                  subject: 'تقرير PDF لليوم',
-                                  text:
-                                      'ملف PDF لقوائم التاريخ ${ds.year}/${ds.month}/${ds.day}',
-                                );
-                                Get.snackbar('تم', 'تم إنشاء ومشاركة ملف PDF');
-                              } catch (e) {
-                                Get.snackbar(
-                                  'خطأ',
-                                  'حدث خطأ أثناء إنشاء ملف PDF',
-                                );
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ),
-
-            const SizedBox(height: 10),
-
-            /// عرض القوائم اليومية
-            Expanded(
-              child: Obx(() {
-                final menus = c.filteredMenus;
-                if (menus.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'لا توجد قوائم لهذا اليوم',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
+                                    return;
+                                  }
+                                  final ds = c.selectedDate.value;
+                                  final file = await PdfService.createDayStylePdf(
+                                    ds,
+                                    // fontAsset:
+                                    //     'assets/fonts/NotoNaskhArabic-Regular.ttf',
+                                    // logoAsset: 'assets/images/logo.png',
+                                  );
+                                  await PdfService.shareFile(
+                                    file,
+                                    subject: 'تقرير PDF لليوم',
+                                    text:
+                                        'ملف PDF لقوائم التاريخ ${ds.year}/${ds.month}/${ds.day}',
+                                  );
+                                  Get.snackbar(
+                                    'تم',
+                                    'تم إنشاء ومشاركة ملف PDF',
+                                  );
+                                } catch (e) {
+                                  Get.snackbar(
+                                    'خطأ',
+                                    'حدث خطأ أثناء إنشاء ملف PDF',
+                                  );
+                                }
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   );
-                }
+                }),
+              ),
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: menus.length,
-                  itemBuilder: (context, i) {
-                    final m = menus[i];
-                    final branchName =
-                        c.branches.firstWhere((b) => b.id == m.branchId).name;
+              const SizedBox(height: 10),
 
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 280),
-                      margin: const EdgeInsets.only(bottom: 14),
-                      child: Material(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        elevation: 2,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap:
-                              () => Get.toNamed(
-                                '/menus/items',
-                                arguments: {'menuId': m.id},
-                              ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
+              /// عرض القوائم اليومية
+              Expanded(
+                child: Obx(() {
+                  final menus = c.filteredMenus;
+                  if (menus.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'لا توجد قوائم لهذا اليوم',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      height: 54,
-                                      width: 54,
-                                      decoration: BoxDecoration(
-                                        color:
-                                            theme.colorScheme.primaryContainer,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Icon(
-                                        Icons.menu_book_rounded,
-                                        color: theme.colorScheme.primary,
-                                        size: 28,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            m.name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: menus.length,
+                    itemBuilder: (context, i) {
+                      final m = menus[i];
+                      final branchName =
+                          c.branches.firstWhere((b) => b.id == m.branchId).name;
+
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 280),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        child: Material(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          elevation: 2,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap:
+                                () => Get.toNamed(
+                                  '/menus/items',
+                                  arguments: {'menuId': m.id},
+                                ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        height: 54,
+                                        width: 54,
+                                        decoration: BoxDecoration(
+                                          color:
+                                              theme
+                                                  .colorScheme
+                                                  .primaryContainer,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
                                           ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            branchName,
-                                            style: TextStyle(
-                                              color: theme.colorScheme.outline,
+                                        ),
+                                        child: Icon(
+                                          Icons.menu_book_rounded,
+                                          color: theme.colorScheme.primary,
+                                          size: 28,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              m.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
                                             ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              branchName,
+                                              style: TextStyle(
+                                                color:
+                                                    theme.colorScheme.outline,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // أزرار التحكم (عرض/حذف)
+                                      Column(
+                                        children: [
+                                          IconButton(
+                                            tooltip: 'حذف',
+                                            icon: Icon(
+                                              Icons.delete_outline,
+                                              color: theme.colorScheme.error,
+                                            ),
+                                            onPressed: () => c.deleteMenu(m.id),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    // أزرار التحكم (عرض/حذف)
-                                    Column(
-                                      children: [
-                                      
-                                        IconButton(
-                                          tooltip: 'حذف',
-                                          icon: Icon(
-                                            Icons.delete_outline,
-                                            color: theme.colorScheme.error,
-                                          ),
-                                          onPressed: () => c.deleteMenu(m.id),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                // Professional chips summary (no extra queries)
-                                Builder(
-                                  builder: (ctx) {
-                                    final double itemsTotal =
-                                        (c.menuTotals[m.id] ?? 0).toDouble();
-                                    final double stationery =
-                                        (m.stationeryExpenses ?? 0).toDouble();
-                                    final double transport =
-                                        (m.transportationExpenses ?? 0)
-                                            .toDouble();
-                                    final double grandTotal =
-                                        itemsTotal + stationery + transport;
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Professional chips summary (no extra queries)
+                                  Builder(
+                                    builder: (ctx) {
+                                      final double itemsTotal =
+                                          (c.menuTotals[m.id] ?? 0).toDouble();
+                                      final double stationery =
+                                          (m.stationeryExpenses ?? 0)
+                                              .toDouble();
+                                      final double transport =
+                                          (m.transportationExpenses ?? 0)
+                                              .toDouble();
+                                      final double grandTotal =
+                                          itemsTotal + stationery + transport;
 
-                                    return SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: Row(
-                                        children: [
-                                          _statChip(
-                                            context,
-                                            Icons.edit_note_rounded,
-                                            'قرطاسية',
-                                            '${stationery.toStringAsFixed(2)} ر.س',
-                                            Colors.purple,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          _statChip(
-                                            context,
-                                            Icons.local_shipping_rounded,
-                                            'نقل',
-                                            '${transport.toStringAsFixed(2)} ر.س',
-                                            Colors.orange,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          _statChip(
-                                            context,
-                                            Icons.payments_rounded,
-                                            'إجمالي العناصر',
-                                            '${itemsTotal.toStringAsFixed(2)} ر.س',
-                                            theme.colorScheme.primary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          _statChip(
-                                            context,
-                                            Icons
-                                                .account_balance_wallet_rounded,
-                                            'الإجمالي الكلي',
-                                            '${grandTotal.toStringAsFixed(2)} ر.س',
-                                            Colors.green,
-                                            highlighted: true,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          _statChip(
-                                            context,
-                                            Icons.category_rounded,
-                                            'عدد الفئات',
-                                            '${c.menuCategoryCounts[m.id] ?? 0}',
-                                            theme.colorScheme.secondary,
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: FilledButton.icon(
-                                        icon: const Icon(Icons.table_chart),
-                                        label: const Text('تصدير إكسل'),
-                                        style: FilledButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 12,
-                                          ),
+                                      return SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          children: [
+                                            _statChip(
+                                              context,
+                                              Icons.edit_note_rounded,
+                                              'قرطاسية',
+                                              '${stationery.toStringAsFixed(2)} ر.س',
+                                              Colors.purple,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _statChip(
+                                              context,
+                                              Icons.local_shipping_rounded,
+                                              'نقل',
+                                              '${transport.toStringAsFixed(2)} ر.س',
+                                              Colors.orange,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _statChip(
+                                              context,
+                                              Icons.payments_rounded,
+                                              'إجمالي العناصر',
+                                              '${itemsTotal.toStringAsFixed(2)} ر.س',
+                                              theme.colorScheme.primary,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _statChip(
+                                              context,
+                                              Icons
+                                                  .account_balance_wallet_rounded,
+                                              'الإجمالي الكلي',
+                                              '${grandTotal.toStringAsFixed(2)} ر.س',
+                                              Colors.green,
+                                              highlighted: true,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            _statChip(
+                                              context,
+                                              Icons.category_rounded,
+                                              'عدد الفئات',
+                                              '${c.menuCategoryCounts[m.id] ?? 0}',
+                                              theme.colorScheme.secondary,
+                                            ),
+                                          ],
                                         ),
-                                        onPressed: () async {
-                                          try {
-                                            Get.snackbar(
-                                              'تصدير',
-                                              'جارٍ تحضير ملف الإكسل...',
-                                              snackPosition:
-                                                  SnackPosition.BOTTOM,
-                                            );
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          icon: const Icon(Icons.table_chart),
+                                          label: const Text('تصدير إكسل'),
+                                          style: FilledButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                          onPressed: () async {
+                                            try {
+                                              Get.snackbar(
+                                                'تصدير',
+                                                'جارٍ تحضير ملف الإكسل...',
+                                                snackPosition:
+                                                    SnackPosition.BOTTOM,
+                                              );
 
-                                            final file2 =
-                                                await ExcelExportServices.createMenuStyleExcel(
-                                                  m.id,
-                                                );
-                                            await PdfService.shareFile(
-                                              file2,
-                                              subject: 'تصدير إكسل للقائمة',
-                                              text:
-                                                  'ملف الإكسل للقائمة ${m.name}',
-                                            );
-                                            Get.snackbar(
-                                              'تم',
-                                              'تم إنشاء الملف ومشاركته',
-                                            );
-                                          } catch (e) {
-                                            Get.snackbar(
-                                              'خطأ',
-                                              'حدث خطأ أثناء التصدير',
-                                            );
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: FilledButton.icon(
-                                        icon: const Icon(Icons.picture_as_pdf),
-                                        label: const Text('تصدير PDF'),
-                                        style: FilledButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 12,
-                                          ),
-                                          backgroundColor: Colors.redAccent,
-                                        ),
-                                        onPressed: () async {
-                                          try {
-                                            Get.snackbar(
-                                              'تصدير',
-                                              'جارٍ إنشاء ملف PDF...',
-                                              snackPosition:
-                                                  SnackPosition.BOTTOM,
-                                            );
-                                            final rows = await c
-                                                .exportRowsForMenu(m.id);
-                                            if (catC.categories.isEmpty) {
-                                              await catC.load();
+                                              final file2 =
+                                                  await ExcelExportServices.createMenuStyleExcel(
+                                                    m.id,
+                                                  );
+                                              await PdfService.shareFile(
+                                                file2,
+                                                subject: 'تصدير إكسل للقائمة',
+                                                text:
+                                                    'ملف الإكسل للقائمة ${m.name}',
+                                              );
+                                              Get.snackbar(
+                                                'تم',
+                                                'تم إنشاء الملف ومشاركته',
+                                              );
+                                            } catch (e) {
+                                              Get.snackbar(
+                                                'خطأ',
+                                                'حدث خطأ أثناء التصدير',
+                                              );
                                             }
-                                            final arabicRows =
-                                                rows.map((r) {
-                                                  final catId =
-                                                      r['categoryId'] ?? '';
-                                                  dynamic found;
-                                                  try {
-                                                    found = catC.categories
-                                                        .firstWhere(
-                                                          (x) => x.id == catId,
-                                                        );
-                                                  } catch (_) {
-                                                    found = null;
-                                                  }
-                                                  return {
-                                                    'ملاحظة': r['notes'] ?? '',
-                                                    'كمية': r['qty'] ?? 0,
-                                                    'سعر الوحدة':
-                                                        r['unit_price'] ??
-                                                        r['unitPrice'] ??
-                                                        0,
-                                                    'الفئة':
-                                                        found != null
-                                                            ? (found.name ?? '')
-                                                            : '',
-                                                    'الإجمالي': r['total'] ?? 0,
-                                                  };
-                                                }).toList();
-
-                                            final file =
-                                                await PdfService.createPdfReportForMenu(
-                                                  menuName: m.name,
-                                                  rows: arabicRows,
-                                                  logoAsset:
-                                                      'assets/images/logo.png',
-                                                  fontAsset:
-                                                      'assets/fonts/NotoNaskhArabic-Regular.ttf',
-                                                  totalKey: 'الإجمالي',
-                                                );
-                                            await PdfService.shareFile(
-                                              file,
-                                              subject: 'تقرير PDF للقائمة',
-                                              text:
-                                                  'تقرير PDF للقائمة ${m.name}',
-                                            );
-                                            Get.snackbar(
-                                              'تم',
-                                              'تم إنشاء ملف PDF ومشاركته',
-                                            );
-                                          } catch (e) {
-                                            Get.snackbar(
-                                              'خطأ',
-                                              'حدث خطأ أثناء إنشاء PDF',
-                                            );
-                                          }
-                                        },
+                                          },
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          icon: const Icon(
+                                            Icons.picture_as_pdf,
+                                          ),
+                                          label: const Text('تصدير PDF'),
+                                          style: FilledButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                          onPressed: () async {
+                                            try {
+                                              Get.snackbar(
+                                                'تصدير',
+                                                'جارٍ إنشاء ملف PDF...',
+                                                snackPosition:
+                                                    SnackPosition.BOTTOM,
+                                              );
+                                              final rows = await c
+                                                  .exportRowsForMenu(m.id);
+                                              if (catC.categories.isEmpty) {
+                                                await catC.load();
+                                              }
+                                              final arabicRows =
+                                                  rows.map((r) {
+                                                    final catId =
+                                                        r['categoryId'] ?? '';
+                                                    dynamic found;
+                                                    try {
+                                                      found = catC.categories
+                                                          .firstWhere(
+                                                            (x) =>
+                                                                x.id == catId,
+                                                          );
+                                                    } catch (_) {
+                                                      found = null;
+                                                    }
+                                                    return {
+                                                      'ملاحظة':
+                                                          r['notes'] ?? '',
+                                                      'كمية': r['qty'] ?? 0,
+                                                      'سعر الوحدة':
+                                                          r['unit_price'] ??
+                                                          r['unitPrice'] ??
+                                                          0,
+                                                      'الفئة':
+                                                          found != null
+                                                              ? (found.name ??
+                                                                  '')
+                                                              : '',
+                                                      'الإجمالي':
+                                                          r['total'] ?? 0,
+                                                    };
+                                                  }).toList();
+
+                                              final file =
+                                                  await PdfService.createPdfReportForMenu(
+                                                    menuName: m.name,
+                                                    rows: arabicRows,
+                                                    logoAsset:
+                                                        'assets/images/logo.png',
+                                                    fontAsset:
+                                                        'assets/fonts/NotoNaskhArabic-Regular.ttf',
+                                                    totalKey: 'الإجمالي',
+                                                  );
+                                              await PdfService.shareFile(
+                                                file,
+                                                subject: 'تقرير PDF للقائمة',
+                                                text:
+                                                    'تقرير PDF للقائمة ${m.name}',
+                                              );
+                                              Get.snackbar(
+                                                'تم',
+                                                'تم إنشاء ملف PDF ومشاركته',
+                                              );
+                                            } catch (e) {
+                                              Get.snackbar(
+                                                'خطأ',
+                                                'حدث خطأ أثناء إنشاء PDF',
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              }),
-            ),
-          ],
+                      );
+                    },
+                  );
+                }),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:get/get.dart';
+import '../../../core/services/excel_services.dart';
 import '../../../core/services/export_service.dart';
+import '../../../core/services/pdf_service.dart';
 import '../../../data/providers/local/sqlite_provider.dart';
 
 class ReportsController extends GetxController {
@@ -26,6 +28,95 @@ class ReportsController extends GetxController {
     customFromMs.value = null;
     customToMs.value = null;
     update();
+  }
+
+  Future<File> generateStyledPdf({
+    required DateTime startDate,
+    required DateTime endDate,
+    required String periodKey,
+    String reportType = 'sheets',
+    String? branchId,
+    String? logoAsset,
+    String appName = 'مشترياتي',
+    String? userName,
+    String? contact,
+    String? extraInfo,
+  }) async {
+    final normalizedStart = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day);
+
+    if (periodKey == 'day') {
+      return PdfService.createDayStylePdf(
+        normalizedStart,
+        branchId: branchId,
+        logoAsset: logoAsset,
+        appName: appName,
+        userName: userName,
+        contact: contact,
+        extraInfo: extraInfo,
+      );
+    }
+
+    final exportPeriod =
+        periodKey == 'week'
+            ? 'week'
+            : periodKey == 'month'
+            ? 'month'
+            : 'custom';
+
+    return PdfService.createPeriodStylePdf(
+      startDate: normalizedStart,
+      periodType: exportPeriod,
+      reportType: reportType,
+      branchId: branchId,
+      endDateOverride: normalizedEnd,
+      logoAsset: logoAsset,
+      appName: appName,
+      userName: userName,
+      contact: contact,
+      extraInfo: extraInfo,
+    );
+  }
+
+  Future<File> generateStyledExcel({
+    required DateTime startDate,
+    required DateTime endDate,
+    required String periodKey,
+    String reportType = 'sheets',
+    String? branchId,
+  }) async {
+    final normalizedStart = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
+    final normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day);
+
+    if (periodKey == 'day') {
+      return ExcelExportServices.createDayStyleExcel(
+        normalizedStart,
+        branchId: branchId,
+      );
+    }
+
+    final exportPeriod =
+        periodKey == 'week'
+            ? 'week'
+            : periodKey == 'month'
+            ? 'month'
+            : 'custom';
+
+    return ExcelExportServices.createPeriodStyleExcel(
+      startDate: normalizedStart,
+      periodType: exportPeriod,
+      reportType: reportType,
+      branchId: branchId,
+      endDateOverride: normalizedEnd,
+    );
   }
 
   // ---- Export helpers (generate files) ----

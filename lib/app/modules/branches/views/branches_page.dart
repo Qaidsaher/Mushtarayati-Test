@@ -26,7 +26,7 @@ class BranchesPage extends StatelessWidget {
           ),
         ),
         body: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Obx(() {
             if (c.branches.isEmpty) {
               return const Center(
@@ -49,7 +49,9 @@ class BranchesPage extends StatelessWidget {
                     color: theme.colorScheme.surface,
                     boxShadow: [
                       BoxShadow(
-                        color: theme.shadowColor.withAlpha((0.08 * 255).toInt()),
+                        color: theme.shadowColor.withAlpha(
+                          (0.08 * 255).toInt(),
+                        ),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -101,7 +103,8 @@ class BranchesPage extends StatelessWidget {
                             Icons.edit_location_alt_rounded,
                             color: theme.colorScheme.primary,
                           ),
-                          onPressed: () => _showEditBranchDialog(context, c, branch),
+                          onPressed:
+                              () => _showEditBranchDialog(context, c, branch),
                         ),
                         IconButton(
                           tooltip: 'حذف',
@@ -109,7 +112,8 @@ class BranchesPage extends StatelessWidget {
                             Icons.delete_outline_rounded,
                             color: theme.colorScheme.error,
                           ),
-                          onPressed: () => _confirmDelete(context, c, branch.id),
+                          onPressed:
+                              () => _confirmDelete(context, c, branch.id),
                         ),
                       ],
                     ),
@@ -135,13 +139,24 @@ class BranchesPage extends StatelessWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'اسم الفرع')),
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'اسم الفرع'),
+              ),
               const SizedBox(height: 8),
-              TextField(controller: address, decoration: const InputDecoration(labelText: 'الموقع / العنوان')),
+              TextField(
+                controller: address,
+                decoration: const InputDecoration(
+                  labelText: 'الموقع / العنوان',
+                ),
+              ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('إلغاء'),
+            ),
             FilledButton.icon(
               icon: const Icon(Icons.check),
               label: const Text('إضافة'),
@@ -149,10 +164,18 @@ class BranchesPage extends StatelessWidget {
                 if (name.text.isNotEmpty && address.text.isNotEmpty) {
                   // show a simple loading state by replacing dialog content
                   Navigator.of(ctx).pop();
-                  Get.dialog(Center(child: CircularProgressIndicator()), barrierDismissible: false);
+                  Get.dialog(
+                    Center(child: CircularProgressIndicator()),
+                    barrierDismissible: false,
+                  );
                   await c.addBranch(name.text, address.text);
                   Get.back();
-                  Get.snackbar('تم', 'تمت إضافة الفرع بنجاح', snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(16));
+                  Get.snackbar(
+                    'تم',
+                    'تمت إضافة الفرع بنجاح',
+                    snackPosition: SnackPosition.BOTTOM,
+                    margin: const EdgeInsets.all(16),
+                  );
                 }
               },
             ),
@@ -162,7 +185,11 @@ class BranchesPage extends StatelessWidget {
     );
   }
 
-  void _showEditBranchDialog(BuildContext context, BranchesController c, BranchModel branch) {
+  void _showEditBranchDialog(
+    BuildContext context,
+    BranchesController c,
+    BranchModel branch,
+  ) {
     final name = TextEditingController(text: branch.name);
     final address = TextEditingController(text: branch.location ?? '');
 
@@ -174,22 +201,41 @@ class BranchesPage extends StatelessWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'اسم الفرع')),
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'اسم الفرع'),
+              ),
               const SizedBox(height: 8),
-              TextField(controller: address, decoration: const InputDecoration(labelText: 'الموقع / العنوان')),
+              TextField(
+                controller: address,
+                decoration: const InputDecoration(
+                  labelText: 'الموقع / العنوان',
+                ),
+              ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('إلغاء'),
+            ),
             FilledButton.icon(
               icon: const Icon(Icons.save),
               label: const Text('تحديث'),
               onPressed: () async {
                 Navigator.of(ctx).pop();
-                Get.dialog(Center(child: CircularProgressIndicator()), barrierDismissible: false);
+                Get.dialog(
+                  Center(child: CircularProgressIndicator()),
+                  barrierDismissible: false,
+                );
                 await c.updateBranch(branch.id, name.text, address.text);
                 Get.back();
-                Get.snackbar('تم', 'تم تحديث بيانات الفرع بنجاح', snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(16));
+                Get.snackbar(
+                  'تم',
+                  'تم تحديث بيانات الفرع بنجاح',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(16),
+                );
               },
             ),
           ],

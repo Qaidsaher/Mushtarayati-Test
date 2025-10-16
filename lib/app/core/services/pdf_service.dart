@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import '../../data/repositories/menu_repository.dart';
 import '../../data/repositories/item_repository.dart';
 import '../../data/repositories/category_repository.dart';
+import '../../data/repositories/branch_repository.dart';
 
 // Lightweight internal data holders for period sheets prefetching
 class _MenuItemsData {
@@ -268,6 +269,7 @@ class PdfService {
   // ===== New: Day-style PDF mirroring Excel (categories, expenses, grand total) =====
   static Future<File> createDayStylePdf(
     DateTime date, {
+    String? branchId,
     String? logoAsset,
     String appName = 'مشترياتي',
     String? userName,
@@ -277,10 +279,14 @@ class PdfService {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
     final catRepo = CategoryRepository();
+    final branchRepo = BranchRepository();
 
-    final menus = await menuRepo.list(date: _dateStr(date));
+    final menus = await menuRepo.list(date: _dateStr(date), branchId: branchId);
     final cats = await catRepo.getAll();
     final catNames = {for (final c in cats) c.id: c.name};
+    final branchNames = {
+      for (final b in await branchRepo.getAll()) b.id: b.name,
+    };
 
     // Prefetch items per menu to avoid async in build
     final Map<String, List<dynamic>> itemsByMenu = {};
@@ -329,11 +335,16 @@ class PdfService {
           widgets.add(pw.SizedBox(height: 8));
 
           for (final menu in menus) {
+            final branchName =
+                (menu.branchId != null &&
+                        branchNames.containsKey(menu.branchId))
+                    ? branchNames[menu.branchId]!
+                    : 'فرع غير معروف';
             widgets.add(
               pw.Directionality(
                 textDirection: pw.TextDirection.rtl,
                 child: _sectionTitle(
-                  '${menu.name} ${_dateStr(date)}',
+                  '$branchName • ${menu.name} ${_dateStr(date)}',
                   arabicBold,
                 ),
               ),
@@ -625,8 +636,10 @@ class PdfService {
   // ===== New: Period PDF (sheets per day OR summary) mirroring Excel =====
   static Future<File> createPeriodStylePdf({
     required DateTime startDate,
-    required String periodType, // "week" or "month"
+    required String periodType, // "week" أو "month" أو "custom"
     String reportType = "sheets", // "sheets" or "summary"
+    String? branchId,
+    DateTime? endDateOverride,
     String? logoAsset,
     String appName = 'مشترياتي',
     String? userName,
@@ -636,17 +649,42 @@ class PdfService {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
     final catRepo = CategoryRepository();
+    final branchRepo = BranchRepository();
 
     // Determine end date
-    DateTime endDate;
+    final normalizedStart = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
+
+    DateTime computedEnd;
     if (periodType == "week") {
-      endDate = startDate.add(const Duration(days: 6));
+      computedEnd = normalizedStart.add(const Duration(days: 6));
+    } else if (periodType == "month") {
+      computedEnd = DateTime(
+        normalizedStart.year,
+        normalizedStart.month + 1,
+        0,
+      );
     } else {
-      endDate = DateTime(startDate.year, startDate.month + 1, 0);
+      computedEnd = endDateOverride ?? normalizedStart;
     }
+
+    final DateTime endDate =
+        endDateOverride != null
+            ? DateTime(
+              endDateOverride.year,
+              endDateOverride.month,
+              endDateOverride.day,
+            )
+            : computedEnd;
 
     final cats = await catRepo.getAll();
     final catNames = {for (final c in cats) c.id: c.name};
+    final branchNames = {
+      for (final b in await branchRepo.getAll()) b.id: b.name,
+    };
 
     final doc = pw.Document();
     final (arabicFont, arabicBold) = await _loadArabicFonts();
@@ -664,12 +702,12 @@ class PdfService {
       // Prefetch all data to avoid async in build
       final List<_DayMenusData> daysData = [];
       for (
-        DateTime d = startDate;
+        DateTime d = normalizedStart;
         !d.isAfter(endDate);
         d = d.add(const Duration(days: 1))
       ) {
         final dateStr = _dateStr(d);
-        final menus = await menuRepo.list(date: dateStr);
+        final menus = await menuRepo.list(date: dateStr, branchId: branchId);
         final List<_MenuItemsData> menuData = [];
         for (final m in menus) {
           final items = await itemRepo.listByMenu(m.id);
@@ -720,11 +758,16 @@ class PdfService {
               widgets.add(pw.SizedBox(height: 8));
               for (final md in day.menus) {
                 final menu = md.menu;
+                final branchName =
+                    (menu.branchId != null &&
+                            branchNames.containsKey(menu.branchId))
+                        ? branchNames[menu.branchId]!
+                        : 'فرع غير معروف';
                 widgets.add(
                   pw.Directionality(
                     textDirection: pw.TextDirection.rtl,
                     child: _sectionTitle(
-                      '${menu.name} ${day.dateStr}',
+                      '$branchName • ${menu.name} ${day.dateStr}',
                       arabicBold,
                     ),
                   ),
@@ -834,12 +877,12 @@ class PdfService {
       // summary mode
       final rows = <List<String>>[];
       for (
-        DateTime d = startDate;
+        DateTime d = normalizedStart;
         !d.isAfter(endDate);
         d = d.add(const Duration(days: 1))
       ) {
         final dateStr = _dateStr(d);
-        final menus = await menuRepo.list(date: dateStr);
+        final menus = await menuRepo.list(date: dateStr, branchId: branchId);
         for (final menu in menus) {
           final items = await itemRepo.listByMenu(menu.id);
           final itemsTotal = items.fold<double>(
@@ -851,9 +894,13 @@ class PdfService {
           final double transport =
               (menu.transportationExpenses ?? 0).toDouble();
           final grand = itemsTotal + stationery + transport;
+          final branchName =
+              (menu.branchId != null && branchNames.containsKey(menu.branchId))
+                  ? branchNames[menu.branchId]!
+                  : 'فرع غير معروف';
           rows.add([
             'اليوم ${d.day}',
-            menu.name,
+            '$branchName • ${menu.name}',
             grand.toStringAsFixed(2),
             items.length.toString(),
             dateStr,
@@ -893,7 +940,7 @@ class PdfService {
                   child: pw.TableHelper.fromTextArray(
                     headers: const [
                       'اليوم',
-                      'الفرع',
+                      'الفرع / القائمة',
                       'الإجمالي',
                       'عدد الأصناف',
                       'تاريخ',
