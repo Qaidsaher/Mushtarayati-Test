@@ -22,7 +22,7 @@ class CategoriesPage extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
-       
+
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _showAddCategoryDialog(context, c),
           icon: const Icon(Icons.add_rounded),
@@ -49,41 +49,43 @@ class CategoriesPage extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Obx(() => SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildFilterChip(
-                      context: context,
-                      label: 'الكل',
-                      icon: Icons.apps_rounded,
-                      isSelected: selectedFilter.value == 'الكل',
-                      onTap: () => selectedFilter.value = 'الكل',
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildFilterChip(
-                      context: context,
-                      label: 'خضار',
-                      icon: Icons.eco_rounded,
-                      isSelected: selectedFilter.value == 'خضار',
-                      onTap: () => selectedFilter.value = 'خضار',
-                      color: Colors.green.shade600,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildFilterChip(
-                      context: context,
-                      label: 'فاكهة',
-                      icon: Icons.local_pizza_rounded,
-                      isSelected: selectedFilter.value == 'فاكهة',
-                      onTap: () => selectedFilter.value = 'فاكهة',
-                      color: Colors.orange.shade600,
-                    ),
-                  ],
+              child: Obx(
+                () => SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip(
+                        context: context,
+                        label: 'الكل',
+                        icon: Icons.apps_rounded,
+                        isSelected: selectedFilter.value == 'الكل',
+                        onTap: () => selectedFilter.value = 'الكل',
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildFilterChip(
+                        context: context,
+                        label: 'خضار',
+                        icon: Icons.eco_rounded,
+                        isSelected: selectedFilter.value == 'خضار',
+                        onTap: () => selectedFilter.value = 'خضار',
+                        color: Colors.green.shade600,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildFilterChip(
+                        context: context,
+                        label: 'فاكهة',
+                        icon: Icons.local_pizza_rounded,
+                        isSelected: selectedFilter.value == 'فاكهة',
+                        onTap: () => selectedFilter.value = 'فاكهة',
+                        color: Colors.orange.shade600,
+                      ),
+                    ],
+                  ),
                 ),
-              )),
+              ),
             ),
-            
+
             // Categories List
             Expanded(
               child: Obx(() {
@@ -92,9 +94,12 @@ class CategoriesPage extends StatelessWidget {
                 }
 
                 // Filter categories based on selected filter
-                final filteredCategories = selectedFilter.value == 'الكل'
-                    ? c.categories
-                    : c.categories.where((cat) => cat.type == selectedFilter.value).toList();
+                final filteredCategories =
+                    selectedFilter.value == 'الكل'
+                        ? c.categories
+                        : c.categories
+                            .where((cat) => cat.type == selectedFilter.value)
+                            .toList();
 
                 if (filteredCategories.isEmpty) {
                   return Center(
@@ -196,7 +201,8 @@ class CategoriesPage extends StatelessWidget {
                                 ),
                                 backgroundColor: color.withOpacity(0.12),
                                 padding: EdgeInsets.zero,
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
                                 visualDensity: VisualDensity.compact,
                                 side: BorderSide.none,
                               ),
@@ -211,9 +217,15 @@ class CategoriesPage extends StatelessWidget {
                                     color: theme.colorScheme.primary,
                                     size: 22,
                                   ),
-                                  onPressed: () => _showEditCategoryDialog(context, c, cat),
+                                  onPressed:
+                                      () => _showEditCategoryDialog(
+                                        context,
+                                        c,
+                                        cat,
+                                      ),
                                   style: IconButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                                    backgroundColor: theme.colorScheme.primary
+                                        .withOpacity(0.1),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -227,9 +239,11 @@ class CategoriesPage extends StatelessWidget {
                                     color: theme.colorScheme.error,
                                     size: 22,
                                   ),
-                                  onPressed: () => _confirmDelete(context, c, cat.id),
+                                  onPressed:
+                                      () => _confirmDelete(context, c, cat.id),
                                   style: IconButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.error.withOpacity(0.1),
+                                    backgroundColor: theme.colorScheme.error
+                                        .withOpacity(0.1),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -260,7 +274,7 @@ class CategoriesPage extends StatelessWidget {
     required Color color,
   }) {
     final theme = Theme.of(context);
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -271,18 +285,20 @@ class CategoriesPage extends StatelessWidget {
           color: isSelected ? color : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : theme.colorScheme.outline.withOpacity(0.3),
+            color:
+                isSelected ? color : theme.colorScheme.outline.withOpacity(0.3),
             width: isSelected ? 2 : 1,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -324,9 +340,7 @@ class CategoriesPage extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
@@ -385,7 +399,8 @@ class CategoriesPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
                   ),
                   onChanged: (value) => errorMessage.value = '',
                 ),
@@ -398,62 +413,67 @@ class CategoriesPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Obx(() => Row(
-                  children: [
-                    Expanded(
-                      child: _buildTypeChip(
-                        context: context,
-                        label: 'فاكهة',
-                        icon: Icons.local_pizza_rounded,
-                        color: Colors.orange.shade600,
-                        isSelected: type.value == 'فاكهة',
-                        onTap: () => type.value = 'فاكهة',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildTypeChip(
-                        context: context,
-                        label: 'خضار',
-                        icon: Icons.eco_rounded,
-                        color: Colors.green.shade600,
-                        isSelected: type.value == 'خضار',
-                        onTap: () => type.value = 'خضار',
-                      ),
-                    ),
-                  ],
-                )),
-                Obx(() => errorMessage.value.isNotEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: theme.colorScheme.error,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  errorMessage.value,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.error,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                Obx(
+                  () => Row(
+                    children: [
+                      Expanded(
+                        child: _buildTypeChip(
+                          context: context,
+                          label: 'فاكهة',
+                          icon: Icons.local_pizza_rounded,
+                          color: Colors.orange.shade600,
+                          isSelected: type.value == 'فاكهة',
+                          onTap: () => type.value = 'فاكهة',
                         ),
-                      )
-                    : const SizedBox.shrink()),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildTypeChip(
+                          context: context,
+                          label: 'خضار',
+                          icon: Icons.eco_rounded,
+                          color: Colors.green.shade600,
+                          isSelected: type.value == 'خضار',
+                          onTap: () => type.value = 'خضار',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Obx(
+                  () =>
+                      errorMessage.value.isNotEmpty
+                          ? Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: theme.colorScheme.error,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      errorMessage.value,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.error,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          : const SizedBox.shrink(),
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -466,7 +486,9 @@ class CategoriesPage extends StatelessWidget {
 
                       // Check for duplicate name
                       final duplicateName = c.categories.any(
-                        (cat) => cat.name.trim().toLowerCase() == name.text.trim().toLowerCase(),
+                        (cat) =>
+                            cat.name.trim().toLowerCase() ==
+                            name.text.trim().toLowerCase(),
                       );
 
                       if (duplicateName) {
@@ -476,12 +498,15 @@ class CategoriesPage extends StatelessWidget {
 
                       // Check for duplicate name + type
                       final duplicateNameAndType = c.categories.any(
-                        (cat) => cat.name.trim().toLowerCase() == name.text.trim().toLowerCase() 
-                            && cat.type == type.value,
+                        (cat) =>
+                            cat.name.trim().toLowerCase() ==
+                                name.text.trim().toLowerCase() &&
+                            cat.type == type.value,
                       );
 
                       if (duplicateNameAndType) {
-                        errorMessage.value = 'يوجد تصنيف بنفس الاسم والنوع بالفعل';
+                        errorMessage.value =
+                            'يوجد تصنيف بنفس الاسم والنوع بالفعل';
                         return;
                       }
 
@@ -526,7 +551,11 @@ class CategoriesPage extends StatelessWidget {
     );
   }
 
-  void _showEditCategoryDialog(BuildContext context, CategoriesController c, CategoryModel cat) {
+  void _showEditCategoryDialog(
+    BuildContext context,
+    CategoriesController c,
+    CategoryModel cat,
+  ) {
     final name = TextEditingController(text: cat.name);
     final RxString type = (cat.type ?? 'فاكهة').obs;
     final RxString errorMessage = ''.obs;
@@ -602,7 +631,8 @@ class CategoriesPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
                   ),
                   onChanged: (value) => errorMessage.value = '',
                 ),
@@ -615,62 +645,67 @@ class CategoriesPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Obx(() => Row(
-                  children: [
-                    Expanded(
-                      child: _buildTypeChip(
-                        context: context,
-                        label: 'فاكهة',
-                        icon: Icons.local_pizza_rounded,
-                        color: Colors.orange.shade600,
-                        isSelected: type.value == 'فاكهة',
-                        onTap: () => type.value = 'فاكهة',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildTypeChip(
-                        context: context,
-                        label: 'خضار',
-                        icon: Icons.eco_rounded,
-                        color: Colors.green.shade600,
-                        isSelected: type.value == 'خضار',
-                        onTap: () => type.value = 'خضار',
-                      ),
-                    ),
-                  ],
-                )),
-                Obx(() => errorMessage.value.isNotEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: theme.colorScheme.error,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  errorMessage.value,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.error,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                Obx(
+                  () => Row(
+                    children: [
+                      Expanded(
+                        child: _buildTypeChip(
+                          context: context,
+                          label: 'فاكهة',
+                          icon: Icons.local_pizza_rounded,
+                          color: Colors.orange.shade600,
+                          isSelected: type.value == 'فاكهة',
+                          onTap: () => type.value = 'فاكهة',
                         ),
-                      )
-                    : const SizedBox.shrink()),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildTypeChip(
+                          context: context,
+                          label: 'خضار',
+                          icon: Icons.eco_rounded,
+                          color: Colors.green.shade600,
+                          isSelected: type.value == 'خضار',
+                          onTap: () => type.value = 'خضار',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Obx(
+                  () =>
+                      errorMessage.value.isNotEmpty
+                          ? Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: theme.colorScheme.error,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      errorMessage.value,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.error,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          : const SizedBox.shrink(),
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -683,8 +718,10 @@ class CategoriesPage extends StatelessWidget {
 
                       // Check for duplicate name (excluding current category)
                       final duplicateName = c.categories.any(
-                        (otherCat) => otherCat.id != cat.id && 
-                            otherCat.name.trim().toLowerCase() == name.text.trim().toLowerCase(),
+                        (otherCat) =>
+                            otherCat.id != cat.id &&
+                            otherCat.name.trim().toLowerCase() ==
+                                name.text.trim().toLowerCase(),
                       );
 
                       if (duplicateName) {
@@ -694,13 +731,16 @@ class CategoriesPage extends StatelessWidget {
 
                       // Check for duplicate name + type (excluding current category)
                       final duplicateNameAndType = c.categories.any(
-                        (otherCat) => otherCat.id != cat.id && 
-                            otherCat.name.trim().toLowerCase() == name.text.trim().toLowerCase() 
-                            && otherCat.type == type.value,
+                        (otherCat) =>
+                            otherCat.id != cat.id &&
+                            otherCat.name.trim().toLowerCase() ==
+                                name.text.trim().toLowerCase() &&
+                            otherCat.type == type.value,
                       );
 
                       if (duplicateNameAndType) {
-                        errorMessage.value = 'يوجد تصنيف بنفس الاسم والنوع بالفعل';
+                        errorMessage.value =
+                            'يوجد تصنيف بنفس الاسم والنوع بالفعل';
                         return;
                       }
 
@@ -709,7 +749,11 @@ class CategoriesPage extends StatelessWidget {
                         const Center(child: CircularProgressIndicator()),
                         barrierDismissible: false,
                       );
-                      await c.updateCategory(cat.id, name.text.trim(), type.value);
+                      await c.updateCategory(
+                        cat.id,
+                        name.text.trim(),
+                        type.value,
+                      );
                       Get.back();
                       Get.snackbar(
                         'تم',
@@ -751,7 +795,7 @@ class CategoriesPage extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -762,7 +806,8 @@ class CategoriesPage extends StatelessWidget {
           color: isSelected ? color : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : theme.colorScheme.outline.withOpacity(0.3),
+            color:
+                isSelected ? color : theme.colorScheme.outline.withOpacity(0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -835,10 +880,7 @@ class CategoriesPage extends StatelessWidget {
                 margin: const EdgeInsets.all(16),
                 backgroundColor: theme.colorScheme.errorContainer,
                 colorText: theme.colorScheme.onErrorContainer,
-                icon: Icon(
-                  Icons.check_circle,
-                  color: theme.colorScheme.error,
-                ),
+                icon: Icon(Icons.check_circle, color: theme.colorScheme.error),
               );
             },
             icon: const Icon(Icons.delete_rounded),
