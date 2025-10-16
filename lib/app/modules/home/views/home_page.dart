@@ -447,7 +447,7 @@ class HomePage extends GetView<HomeController> {
             horizontal: 16,
             vertical: 8,
           ),
-          leading: Text(
+          trailing: Text(
             NumberFormat.currency(
               locale: 'ar',
               symbol: 'ر.ي',
@@ -463,7 +463,7 @@ class HomePage extends GetView<HomeController> {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text('${branch['menu_count'] ?? 0} قائمة'),
-          trailing: CircleAvatar(
+          leading: CircleAvatar(
             backgroundColor: theme.colorScheme.primaryContainer,
             child: Icon(Icons.store, color: theme.colorScheme.primary),
           ),
@@ -636,7 +636,7 @@ class HomePage extends GetView<HomeController> {
             horizontal: 16,
             vertical: 8,
           ),
-          leading: Text(
+          trailing: Text(
             NumberFormat.currency(
               locale: 'ar',
               symbol: '',
@@ -703,7 +703,7 @@ class HomePage extends GetView<HomeController> {
               ),
             ],
           ),
-          trailing: CircleAvatar(
+          leading: CircleAvatar(
             backgroundColor: theme.colorScheme.secondaryContainer,
             child: Icon(
               Icons.shopping_basket,

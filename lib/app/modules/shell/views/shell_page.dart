@@ -21,8 +21,8 @@ class _ShellPageState extends State<ShellPage> {
   // lazy builders to avoid creating all pages (and their controllers) at once
   late final List<Widget Function()> _pageBuilders = [
     () => const HomePage(),
-    () => const CategoriesPage(),
     () => const MenusPage(),
+    () => const CategoriesPage(),
     () => const BranchesPage(),
     () => const ReportsPage(),
   ];
