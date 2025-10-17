@@ -4,6 +4,8 @@ import '../controllers/menu_items_controller.dart';
 import '../../../data/models/item_model.dart';
 import 'menu_items_bulk_page.dart';
 import '../../../core/services/export_service.dart';
+import '../../../core/services/excel_services.dart';
+import '../../../core/services/pdf_service.dart';
 import '../../../core/widgets/responsive_wrapper.dart';
 import '../../../data/models/category_model.dart';
 
@@ -44,50 +46,30 @@ class MenuItemsPage extends StatelessWidget {
               icon: const Icon(Icons.receipt_long_rounded, size: 18),
             ),
             const SizedBox(width: 8),
-            // Export menu with modern dropdown
-            PopupMenuButton<String>(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.ios_share_rounded,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
+            // Export: Excel
+            IconButton(
+              tooltip: 'تصدير Excel',
+              onPressed: () => _exportExcel(context, c),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.green[50],
+                foregroundColor: Colors.green[800],
+                minimumSize: const Size(36, 36),
+                padding: const EdgeInsets.all(6),
               ),
-              tooltip: 'تصدير',
-              onSelected: (value) async {
-                if (value == 'excel') {
-                  await _exportExcel(context, c);
-                } else if (value == 'pdf') {
-                  await _exportPdf(context, c);
-                }
-              },
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      value: 'excel',
-                      child: Row(
-                        children: [
-                          Icon(Icons.table_chart, color: Colors.green[700]),
-                          const SizedBox(width: 12),
-                          const Text('تصدير Excel'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'pdf',
-                      child: Row(
-                        children: [
-                          Icon(Icons.picture_as_pdf, color: Colors.red[700]),
-                          const SizedBox(width: 12),
-                          const Text('تصدير PDF'),
-                        ],
-                      ),
-                    ),
-                  ],
+              icon: const Icon(Icons.table_chart, size: 18),
+            ),
+            const SizedBox(width: 8),
+            // Export: PDF
+            IconButton(
+              tooltip: 'تصدير PDF',
+              onPressed: () => _exportPdf(context, c),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.red[50],
+                foregroundColor: Colors.red[800],
+                minimumSize: const Size(36, 36),
+                padding: const EdgeInsets.all(6),
+              ),
+              icon: const Icon(Icons.picture_as_pdf, size: 18),
             ),
             const SizedBox(width: 8),
           ],
@@ -217,7 +199,7 @@ class MenuItemsPage extends StatelessWidget {
                               _statChip(
                                 context,
                                 Icons.edit_note_rounded,
-                                'قرطاسية',
+                                'ورقيات',
                                 '${stationery.toStringAsFixed(2)} ر.س',
                                 Colors.purple,
                                 onTap: () => _showExpensesDialog(context, c),
@@ -637,170 +619,52 @@ class MenuItemsPage extends StatelessWidget {
   }
 
   Future<void> _exportExcel(BuildContext context, MenuItemsController c) async {
+    final theme = Theme.of(context);
+    if (c.menuId.isEmpty) {
+      Get.snackbar('تنبيه', 'لا توجد قائمة محددة للتصدير');
+      return;
+    }
     try {
-      if (c.isLoading.value) {
-        Get.snackbar(
-          'تنبيه',
-          'الرجاء الانتظار حتى انتهاء التحميل',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return;
-      }
-      if (c.items.isEmpty) {
-        Get.snackbar(
-          'تنبيه',
-          'لا توجد عناصر للتصدير',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return;
-      }
-
-      final confirmed = await Get.dialog<bool>(
-        AlertDialog(
-          title: const Text('تصدير Excel'),
-          content: const Text(
-            'هل تريد تصدير جميع العناصر في هذه القائمة إلى ملف Excel؟',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(result: false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () => Get.back(result: true),
-              child: const Text('تصدير'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-
       Get.snackbar(
         'تصدير',
-        'جارٍ تحضير ملف Excel...',
+        'جارٍ تحضير ملف الإكسل...',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
       );
-
-      final rows =
-          c.items.map((it) {
-            final cat = _findCategoryById(c.categories, it.categoryId);
-            return {
-              'الفئة': cat?.name ?? '',
-              'الكمية': it.qty,
-              'سعر الوحدة': it.unitPrice,
-              'الإجمالي': (it.qty * it.unitPrice),
-              'ملاحظات': it.notes ?? '',
-            };
-          }).toList();
-
-      final file = await ExportService.createExcelForEntity(
-        prefix: 'menu_${c.menuId}_items',
-        rows: rows,
-      );
+      final file = await ExcelExportServices.createMenuStyleExcel(c.menuId);
       await ExportService.shareFile(
         file,
-        subject: 'تصدير Excel - عناصر القائمة',
-        text: 'ملف Excel لجميع عناصر القائمة',
+        subject: 'تصدير إكسل للقائمة',
+        text: 'ملف إكسل للقائمة ${c.menu.value?.name ?? ''}',
       );
-      Get.snackbar(
-        'تم بنجاح',
-        'تم إنشاء ومشاركة ملف Excel',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green[100],
-      );
+      Get.snackbar('تم', 'تم إنشاء ملف الإكسل ومشاركته');
     } catch (e) {
-      Get.snackbar(
-        'خطأ',
-        'حدث خطأ أثناء التصدير',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red[100],
-      );
+      Get.snackbar('خطأ', 'حدث خطأ أثناء التصدير: $e');
     }
   }
 
   Future<void> _exportPdf(BuildContext context, MenuItemsController c) async {
+    final theme = Theme.of(context);
+    if (c.menuId.isEmpty) {
+      Get.snackbar('تنبيه', 'لا توجد قائمة محددة للتصدير');
+      return;
+    }
     try {
-      if (c.isLoading.value) {
-        Get.snackbar(
-          'تنبيه',
-          'الرجاء الانتظار حتى انتهاء التحميل',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return;
-      }
-      if (c.items.isEmpty) {
-        Get.snackbar(
-          'تنبيه',
-          'لا توجد عناصر للتصدير',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return;
-      }
-
-      final confirmed = await Get.dialog<bool>(
-        AlertDialog(
-          title: const Text('تصدير PDF'),
-          content: const Text(
-            'هل تريد إنشاء ملف PDF يحتوي على جميع عناصر هذه القائمة؟',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(result: false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () => Get.back(result: true),
-              child: const Text('إنشاء'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-
       Get.snackbar(
         'تصدير',
         'جارٍ إنشاء ملف PDF...',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
       );
-
-      final arabicRows =
-          c.items.map((it) {
-            final cat = _findCategoryById(c.categories, it.categoryId);
-            return {
-              'الفئة': cat?.name ?? '',
-              'الكمية': it.qty,
-              'سعر الوحدة': it.unitPrice,
-              'الإجمالي': (it.qty * it.unitPrice),
-              'ملاحظات': it.notes ?? '',
-            };
-          }).toList();
-
-      final file = await ExportService.createPdfReportForMenu(
-        menuName: 'عناصر القائمة',
-        rows: arabicRows,
-        logoAsset: 'assets/images/logo.png',
-        fontAsset: 'assets/fonts/NotoNaskhArabic-Regular.ttf',
-      );
+      final file = await PdfService.createMenuStylePdf(c.menuId);
       await ExportService.shareFile(
         file,
-        subject: 'تقرير PDF - عناصر القائمة',
-        text: 'تقرير PDF لجميع عناصر القائمة',
+        subject: 'تقرير PDF للقائمة',
+        text: 'تقرير PDF للقائمة ${c.menu.value?.name ?? ''}',
       );
-      Get.snackbar(
-        'تم بنجاح',
-        'تم إنشاء ومشاركة ملف PDF',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green[100],
-      );
+      Get.snackbar('تم', 'تم إنشاء ملف PDF ومشاركته');
     } catch (e) {
-      Get.snackbar(
-        'خطأ',
-        'حدث خطأ أثناء إنشاء ملف PDF',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red[100],
-      );
+      Get.snackbar('خطأ', 'حدث خطأ أثناء إنشاء PDF: $e');
     }
   }
 
@@ -1207,7 +1071,7 @@ class MenuItemsPage extends StatelessWidget {
                                   controller: stationeryCtrl,
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
-                                    labelText: 'مصروفات القرطاسية',
+                                    labelText: 'الورقيات',
                                     prefixIcon: const Icon(
                                       Icons.edit_note_rounded,
                                     ),
@@ -1231,7 +1095,7 @@ class MenuItemsPage extends StatelessWidget {
                                   controller: transportCtrl,
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
-                                    labelText: 'مصروفات النقل',
+                                    labelText: 'مصاريف النقل (الحمّالة)',
                                     prefixIcon: const Icon(
                                       Icons.local_shipping_rounded,
                                     ),

@@ -32,9 +32,17 @@ class HomePage extends GetView<HomeController> {
               _buildQuickStatsGrid(context),
               const SizedBox(height: 24),
 
-              // Quick Actions
-              _buildQuickActions(context),
-              const SizedBox(height: 24),
+              // // Quick Actions
+              // _buildQuickActions(context),
+              // const SizedBox(height: 24),
+
+                  // Top Categories
+              if (controller.topCategories.isNotEmpty) ...[
+                _buildSectionHeader(context, 'أكثر الفئات', Icons.category),
+                const SizedBox(height: 12),
+                _buildTopCategories(context),
+                const SizedBox(height: 24),
+              ],
 
               // Branch Statistics
               if (controller.branchStats.isNotEmpty) ...[
@@ -44,13 +52,13 @@ class HomePage extends GetView<HomeController> {
                 const SizedBox(height: 24),
               ],
 
-              // Top Categories
-              if (controller.topCategories.isNotEmpty) ...[
-                _buildSectionHeader(context, 'أكثر الفئات', Icons.category),
-                const SizedBox(height: 12),
-                _buildTopCategories(context),
-                const SizedBox(height: 24),
-              ],
+              // // Top Categories
+              // if (controller.topCategories.isNotEmpty) ...[
+              //   _buildSectionHeader(context, 'أكثر الفئات', Icons.category),
+              //   const SizedBox(height: 12),
+              //   _buildTopCategories(context),
+              //   const SizedBox(height: 24),
+              // ],
 
               // Recent Purchases
               if (controller.recentPurchases.isNotEmpty) ...[

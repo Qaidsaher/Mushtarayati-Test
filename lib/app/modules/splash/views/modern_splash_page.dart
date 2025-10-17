@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/utils/constants.dart';
+import '../../../core/utils/app_info.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -168,7 +169,7 @@ class _ModernSplashPageState extends State<ModernSplashPage>
                 ),
               ),
 
-              // Version at bottom
+              // Version and designer credit at bottom
               Positioned(
                 bottom: 40,
                 left: 0,
@@ -176,12 +177,25 @@ class _ModernSplashPageState extends State<ModernSplashPage>
                 child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: Center(
-                    child: Text(
-                      'النسخة 1.0.0',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withOpacity(0.7),
-                        letterSpacing: 0.5,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'النسخة ${AppInfo.version}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white.withOpacity(0.7),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'تصميم بواسطة ${AppInfo.developerName}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white.withOpacity(0.7),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -220,7 +234,7 @@ class _ModernSplashPageState extends State<ModernSplashPage>
             ),
             child: Center(
               child: Icon(
-                Icons.shopping_bag,
+                Icons.shopping_cart_rounded,
                 size: 70,
                 color: theme.colorScheme.primary,
               ),

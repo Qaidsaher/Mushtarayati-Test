@@ -251,8 +251,8 @@ class _ShellPageState extends State<ShellPage> {
                 label: 'الرئيسية',
               ),
               NavigationDestination(
-                icon: Icon(Icons.shopping_bag_outlined),
-                selectedIcon: Icon(Icons.shopping_bag),
+                icon: Icon(Icons.shopping_cart_outlined),
+                selectedIcon: Icon(Icons.shopping_cart),
                 label: 'المشتريات',
               ),
               NavigationDestination(
@@ -283,7 +283,7 @@ class _ShellPageState extends State<ShellPage> {
       case 0:
         return Icons.home;
       case 1:
-        return Icons.shopping_bag;
+        return Icons.shopping_cart;
       case 2:
         return Icons.category;
       case 3:

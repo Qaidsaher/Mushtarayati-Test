@@ -54,10 +54,7 @@ class MenusPage extends StatelessWidget {
             children: [
               // شريط الأيام الثلاثة فقط + أزرار التصدير
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Obx(() {
                   final dates = c.availableDates;
                   return SingleChildScrollView(
@@ -334,7 +331,7 @@ class MenusPage extends StatelessWidget {
                                             _statChip(
                                               context,
                                               Icons.edit_note_rounded,
-                                              'قرطاسية',
+                                              ' ورقيات',
                                               '${stationery.toStringAsFixed(2)} ر.س',
                                               Colors.purple,
                                             ),
@@ -342,7 +339,7 @@ class MenusPage extends StatelessWidget {
                                             _statChip(
                                               context,
                                               Icons.local_shipping_rounded,
-                                              'نقل',
+                                              'النقل (الحمّالة)',
                                               '${transport.toStringAsFixed(2)} ر.س',
                                               Colors.orange,
                                             ),
@@ -435,59 +432,27 @@ class MenusPage extends StatelessWidget {
                                             backgroundColor: Colors.redAccent,
                                           ),
                                           onPressed: () async {
+                                            if (m.id.isEmpty) {
+                                              Get.snackbar(
+                                                'تنبيه',
+                                                'لا توجد قائمة محددة للتصدير',
+                                              );
+                                              return;
+                                            }
                                             try {
                                               Get.snackbar(
                                                 'تصدير',
                                                 'جارٍ إنشاء ملف PDF...',
                                                 snackPosition:
                                                     SnackPosition.BOTTOM,
+                                                backgroundColor:
+                                                    theme
+                                                        .colorScheme
+                                                        .surfaceContainerHighest,
                                               );
-                                              final rows = await c
-                                                  .exportRowsForMenu(m.id);
-                                              if (catC.categories.isEmpty) {
-                                                await catC.load();
-                                              }
-                                              final arabicRows =
-                                                  rows.map((r) {
-                                                    final catId =
-                                                        r['categoryId'] ?? '';
-                                                    dynamic found;
-                                                    try {
-                                                      found = catC.categories
-                                                          .firstWhere(
-                                                            (x) =>
-                                                                x.id == catId,
-                                                          );
-                                                    } catch (_) {
-                                                      found = null;
-                                                    }
-                                                    return {
-                                                      'ملاحظة':
-                                                          r['notes'] ?? '',
-                                                      'كمية': r['qty'] ?? 0,
-                                                      'سعر الوحدة':
-                                                          r['unit_price'] ??
-                                                          r['unitPrice'] ??
-                                                          0,
-                                                      'الفئة':
-                                                          found != null
-                                                              ? (found.name ??
-                                                                  '')
-                                                              : '',
-                                                      'الإجمالي':
-                                                          r['total'] ?? 0,
-                                                    };
-                                                  }).toList();
-
                                               final file =
-                                                  await PdfService.createPdfReportForMenu(
-                                                    menuName: m.name,
-                                                    rows: arabicRows,
-                                                    logoAsset:
-                                                        'assets/images/logo.png',
-                                                    fontAsset:
-                                                        'assets/fonts/NotoNaskhArabic-Regular.ttf',
-                                                    totalKey: 'الإجمالي',
+                                                  await PdfService.createMenuStylePdf(
+                                                    m.id,
                                                   );
                                               await PdfService.shareFile(
                                                 file,
@@ -502,7 +467,7 @@ class MenusPage extends StatelessWidget {
                                             } catch (e) {
                                               Get.snackbar(
                                                 'خطأ',
-                                                'حدث خطأ أثناء إنشاء PDF',
+                                                'حدث خطأ أثناء إنشاء PDF: $e',
                                               );
                                             }
                                           },

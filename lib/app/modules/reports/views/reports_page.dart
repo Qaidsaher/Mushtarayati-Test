@@ -5,6 +5,8 @@ import '../../../data/providers/local/sqlite_provider.dart';
 import '../../../data/repositories/branch_repository.dart';
 import '../../../data/models/branch_model.dart';
 import '../../../core/services/export_service.dart';
+import 'package:printing/printing.dart';
+import 'dart:io';
 import '../controllers/reports_controller.dart';
 
 class ReportsPage extends StatefulWidget {
@@ -375,18 +377,18 @@ class _ReportsPageState extends State<ReportsPage> {
       actions: [
         IconButton(
           onPressed: _exportPdf,
-          icon: const Icon(Icons.picture_as_pdf),
+          icon: const Icon(Icons.picture_as_pdf, size: 20, color: Colors.red),
           tooltip: 'تصدير PDF',
         ),
         IconButton(
           onPressed: _exportExcel,
-          icon: const Icon(Icons.file_present),
+          icon: const Icon(Icons.file_present, size: 20, color: Colors.green),
           tooltip: 'تصدير Excel',
         ),
         IconButton(
-          onPressed: _exportCsv,
-          icon: const Icon(Icons.table_chart),
-          tooltip: 'تصدير CSV',
+          onPressed: _printPdf,
+          icon: const Icon(Icons.print_rounded, size: 20, color: Colors.blue),
+          tooltip: 'طباعة PDF',
         ),
       ],
       flexibleSpace: Container(
@@ -932,17 +934,6 @@ class _ReportsPageState extends State<ReportsPage> {
               runSpacing: 12,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _exportCsv,
-                  icon: const Icon(Icons.table_chart),
-                  label: const Text('تصدير CSV'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
                   onPressed: _exportPdf,
                   icon: const Icon(Icons.picture_as_pdf),
                   label: const Text('تصدير PDF'),
@@ -965,6 +956,19 @@ class _ReportsPageState extends State<ReportsPage> {
                       vertical: 12,
                     ),
                     backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _printPdf,
+                  icon: const Icon(Icons.print_rounded),
+                  label: const Text('طباعة PDF'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -1010,15 +1014,6 @@ class _ReportsPageState extends State<ReportsPage> {
         );
       });
     }
-  }
-
-  Future<void> _exportCsv() async {
-    await _confirmThenExport(
-      () => _c.generateCsvRecent(prefix: 'purchases'),
-      confirmTitle: 'تصدير CSV',
-      subject: 'تقرير المشتريات (CSV)',
-      progressLabel: 'جارٍ إعداد ملف CSV...',
-    );
   }
 
   Future<void> _exportPdf() async {
@@ -1085,6 +1080,48 @@ class _ReportsPageState extends State<ReportsPage> {
       subject: 'تقرير $label (Excel)',
       progressLabel: 'جارٍ تجهيز ملف Excel...',
     );
+  }
+
+  Future<void> _printPdf() async {
+    if (_c.period.value == 'custom' &&
+        (_customFrom == null || _customTo == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى تحديد تاريخ البداية والنهاية قبل الطباعة.'),
+        ),
+      );
+      return;
+    }
+
+    final rangeConfig = _resolveRange(DateTime.now());
+    final branchId = _c.selectedBranchId.value;
+    final periodKey = _c.period.value;
+    final startDate = rangeConfig.range.start;
+    final endDate = rangeConfig.range.end;
+
+    try {
+      final file = await _withProgress(
+        () => _c.generateStyledPdf(
+          startDate: startDate,
+          endDate: endDate,
+          periodKey: periodKey,
+          branchId: branchId,
+          reportType: 'sheets',
+        ),
+        label: 'جارٍ إنشاء ملف PDF للطباعة...',
+      );
+      final bytes = await File(file.path).readAsBytes();
+      await Printing.layoutPdf(onLayout: (_) async => bytes);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل الطباعة: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _confirmThenExport(

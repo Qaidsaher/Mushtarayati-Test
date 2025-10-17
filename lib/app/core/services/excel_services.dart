@@ -8,9 +8,19 @@ import '../../data/models/category_model.dart';
 import '../../data/repositories/branch_repository.dart';
 
 class ExcelExportServices {
+  static String _slug(String s) {
+    final cleaned =
+        s
+            .replaceAll(RegExp(r'[\\/:*?"<>|]'), ' ')
+            .replaceAll(RegExp(r'\s+'), '_')
+            .trim();
+    return cleaned.isEmpty ? 'all' : cleaned;
+  }
+
   static Future<File> createDayStyleExcel(
     DateTime date, {
     String? branchId,
+    String? branchName,
   }) async {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
@@ -24,6 +34,11 @@ class ExcelExportServices {
     final cats = await catRepo.getAll();
     final branches = await branchRepo.getAll();
     final branchNames = {for (final b in branches) b.id: b.name};
+    final effectiveBranchName =
+        branchName ??
+        (branchId != null
+            ? (branchNames[branchId] ?? 'فرع غير معروف')
+            : 'الكل');
 
     // === Create workbook and single sheet ===
     final Workbook workbook = Workbook();
@@ -47,7 +62,9 @@ class ExcelExportServices {
     // === Title row (merged across all sections) ===
     sheet.getRangeByIndex(1, 1, 1, endCol).merge();
     final title = sheet.getRangeByIndex(1, 1);
-    title.setText('المشتريات النقدية ($dateStr)');
+    title.setText(
+      'المشتريات النقدية - الفرع: $effectiveBranchName - ($dateStr)',
+    );
     title.cellStyle
       ..bold = true
       ..fontSize = 16
@@ -65,7 +82,7 @@ class ExcelExportServices {
       final items = await itemRepo.listByMenu(menu.id);
       final baseCol = startCol + idx * (colsPerSection + dividerWidth);
       final bgColor = sectionColors[idx % sectionColors.length];
-      final branchName =
+      final branchNameLocal =
           (menu.branchId != null && branchNames.containsKey(menu.branchId))
               ? branchNames[menu.branchId]!
               : 'فرع غير معروف';
@@ -73,7 +90,7 @@ class ExcelExportServices {
       // --- Section title ---
       sheet.getRangeByIndex(3, baseCol, 3, baseCol + 3).merge();
       final sectionTitle = sheet.getRangeByIndex(3, baseCol);
-      sectionTitle.setText('$branchName • ${menu.name} $dateStr');
+      sectionTitle.setText('$branchNameLocal • ${menu.name} $dateStr');
       sectionTitle.cellStyle
         ..bold = true
         ..fontSize = 13
@@ -226,8 +243,9 @@ class ExcelExportServices {
     workbook.dispose();
 
     final dir = await getApplicationDocumentsDirectory();
+    final slug = _slug(effectiveBranchName);
     final outName =
-        'day_purchases_${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
+        'purchases_${slug}_${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
     final file = File('${dir.path}/$outName.xlsx');
     await file.writeAsBytes(bytes, flush: true);
     return file;
@@ -238,6 +256,7 @@ class ExcelExportServices {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
     final catRepo = CategoryRepository();
+    final branchRepo = BranchRepository();
 
     // --- جلب القائمة المحددة ---
     final menu = await menuRepo.getById(menuId);
@@ -248,6 +267,12 @@ class ExcelExportServices {
     // --- جلب العناصر والفئات ---
     final items = await itemRepo.listByMenu(menuId);
     final cats = await catRepo.getAll();
+    final branches = await branchRepo.getAll();
+    final branchNames = {for (final b in branches) b.id: b.name};
+    final effectiveBranchName =
+        (menu.branchId != null && branchNames.containsKey(menu.branchId))
+            ? branchNames[menu.branchId]!
+            : 'الكل';
 
     // --- إنشاء ملف Excel ---
     final Workbook workbook = Workbook();
@@ -264,13 +289,23 @@ class ExcelExportServices {
     // --- عنوان التقرير ---
     sheet.getRangeByIndex(1, 1, 1, 5).merge();
     final title = sheet.getRangeByIndex(1, 1);
-    title.setText('تقرير قائمة: ${menu.name}');
+    title.setText('تقرير قائمة: ${menu.name} - الفرع: $effectiveBranchName');
     title.cellStyle
       ..bold = true
       ..fontSize = 16
       ..hAlign = HAlignType.center
       ..vAlign = VAlignType.center
       ..backColor = headerColor
+      ..borders.all.lineStyle = thinBorder;
+
+    // --- سطر فرعي لاسم الفرع ---
+    sheet.getRangeByIndex(2, 1, 2, 5).merge();
+    final sub = sheet.getRangeByIndex(2, 1);
+    sub.setText('الفرع: $effectiveBranchName');
+    sub.cellStyle
+      ..bold = true
+      ..hAlign = HAlignType.center
+      ..vAlign = VAlignType.center
       ..borders.all.lineStyle = thinBorder;
 
     // --- رؤوس الأعمدة ---
@@ -407,7 +442,26 @@ class ExcelExportServices {
     workbook.dispose();
 
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/menu_${menu.id}.xlsx');
+    // اسم الملف: menu_{branch}_{yyyymmdd}.xlsx
+    String ymd;
+    if ((menu.date ?? '').isNotEmpty) {
+      // menu.date متوقعة بصيغة YYYY-MM-DD
+      final d = menu.date!;
+      final parts = d.split('-');
+      if (parts.length == 3) {
+        ymd = parts[0] + parts[1].padLeft(2, '0') + parts[2].padLeft(2, '0');
+      } else {
+        final now = DateTime.now();
+        ymd =
+            '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      }
+    } else {
+      final now = DateTime.now();
+      ymd =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    }
+    final slug = _slug(effectiveBranchName);
+    final file = File('${dir.path}/menu_${slug}_$ymd.xlsx');
     await file.writeAsBytes(bytes, flush: true);
 
     return file;
@@ -419,6 +473,7 @@ class ExcelExportServices {
     String reportType = "sheets", // "sheets" أو "summary"
     String? branchId,
     DateTime? endDateOverride,
+    String? branchName,
   }) async {
     final menuRepo = MenuRepository();
     final itemRepo = ItemRepository();
@@ -470,6 +525,15 @@ class ExcelExportServices {
       for (final b in await branchRepo.getAll()) b.id: b.name,
     };
 
+    final allBranches = {
+      for (final b in await branchRepo.getAll()) b.id: b.name,
+    };
+    final effectiveBranchName =
+        branchName ??
+        (branchId != null
+            ? (allBranches[branchId] ?? 'فرع غير معروف')
+            : 'الكل');
+
     if (reportType == "sheets") {
       // === لكل يوم ورقة منفصلة ===
       for (
@@ -493,7 +557,9 @@ class ExcelExportServices {
         sheet.getRangeByIndex(1, 1, 1, endCol).merge();
         final title = sheet.getRangeByIndex(1, 1);
         title
-          ..setText('تقرير المشتريات ليوم $dateStr')
+          ..setText(
+            'تقرير المشتريات - الفرع: $effectiveBranchName - يوم $dateStr',
+          )
           ..cellStyle.bold = true
           ..cellStyle.fontSize = 16
           ..cellStyle.hAlign = HAlignType.center
@@ -507,15 +573,11 @@ class ExcelExportServices {
           final items = await itemRepo.listByMenu(menu.id);
           final baseCol = startCol + idx * (colsPerSection + dividerWidth);
           final bgColor = sectionColors[idx % sectionColors.length];
-          final branchName =
-              (menu.branchId != null && branchNames.containsKey(menu.branchId))
-                  ? branchNames[menu.branchId]!
-                  : 'فرع غير معروف';
 
           sheet.getRangeByIndex(3, baseCol, 3, baseCol + 3).merge();
           final sectionTitle = sheet.getRangeByIndex(3, baseCol);
           sectionTitle
-            ..setText('$branchName • ${menu.name} $dateStr')
+            ..setText('$effectiveBranchName • ${menu.name} $dateStr')
             ..cellStyle.bold = true
             ..cellStyle.fontSize = 13
             ..cellStyle.backColor = bgColor
@@ -655,13 +717,22 @@ class ExcelExportServices {
       // === ملخص إجمالي (Sheet واحد) ===
       final sheet = workbook.worksheets[0];
       sheet.name = 'ملخص الفترة';
-      sheet.getRangeByIndex(1, 1).setText('اليوم');
-      sheet.getRangeByIndex(1, 2).setText('الفرع / القائمة');
-      sheet.getRangeByIndex(1, 3).setText('الإجمالي');
-      sheet.getRangeByIndex(1, 4).setText('عدد الأصناف');
-      sheet.getRangeByIndex(1, 5).setText('تاريخ');
+      sheet.getRangeByIndex(1, 1, 1, 5).merge();
+      final head = sheet.getRangeByIndex(1, 1);
+      head.setText('ملخص الفترة - الفرع: $effectiveBranchName');
+      head.cellStyle
+        ..bold = true
+        ..hAlign = HAlignType.center
+        ..vAlign = VAlignType.center
+        ..backColor = headerColor;
 
-      int row = 2;
+      sheet.getRangeByIndex(2, 1).setText('اليوم');
+      sheet.getRangeByIndex(2, 2).setText('الفرع / القائمة');
+      sheet.getRangeByIndex(2, 3).setText('الإجمالي');
+      sheet.getRangeByIndex(2, 4).setText('عدد الأصناف');
+      sheet.getRangeByIndex(2, 5).setText('تاريخ');
+
+      int row = 3;
       for (
         DateTime d = normalizedStart;
         !d.isAfter(endDate);
@@ -696,7 +767,7 @@ class ExcelExportServices {
       }
 
       // ترويسة الأعمدة
-      sheet.getRangeByIndex(1, 1, 1, 5).cellStyle
+      sheet.getRangeByIndex(2, 1, 2, 5).cellStyle
         ..bold = true
         ..backColor = headerColor
         ..hAlign = HAlignType.center
@@ -718,8 +789,9 @@ class ExcelExportServices {
     workbook.dispose();
 
     final dir = await getApplicationDocumentsDirectory();
+    final slug = _slug(effectiveBranchName);
     final outName =
-        '${reportType}_${periodType}_${startDate.year}${startDate.month.toString().padLeft(2, '0')}${startDate.day.toString().padLeft(2, '0')}';
+        '${reportType}_${periodType}_${slug}_${startDate.year}${startDate.month.toString().padLeft(2, '0')}${startDate.day.toString().padLeft(2, '0')}';
     final file = File('${dir.path}/$outName.xlsx');
     await file.writeAsBytes(bytes, flush: true);
     return file;
